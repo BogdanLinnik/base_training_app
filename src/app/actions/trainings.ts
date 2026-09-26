@@ -147,6 +147,17 @@ export async function createTraining(formData: FormData) {
     },
   });
 
+  if (forUserId !== userId) {
+    await prisma.notification.create({
+      data: {
+        userId: forUserId,
+        actorId: userId,
+        type: "TRAINING_CREATED_FOR_YOU",
+        trainingId: training.id,
+      },
+    });
+  }
+
   revalidatePath("/");
   redirect(`/trainings/${training.id}`);
 }
@@ -192,6 +203,18 @@ export async function changeTrainingStatus(trainingId: string, formData: FormDat
     where: { id: trainingId },
     data: { status: transition.to },
   });
+
+  if (training.createdById !== training.forUserId) {
+    await prisma.notification.create({
+      data: {
+        userId: training.createdById,
+        actorId: userId,
+        type: "TRAINING_STATUS_CHANGED",
+        trainingId,
+        data: { status: transition.to },
+      },
+    });
+  }
 
   revalidatePath(`/trainings/${trainingId}`);
   revalidatePath("/");
@@ -258,6 +281,20 @@ export async function addComment(trainingId: string, formData: FormData) {
   }
 
   await prisma.comment.create({ data: { trainingId, authorId: userId, text } });
+
+  const recipientId = training.createdById !== userId ? training.createdById : training.forUserId;
+  if (recipientId !== userId) {
+    await prisma.notification.create({
+      data: {
+        userId: recipientId,
+        actorId: userId,
+        type: "NEW_COMMENT",
+        trainingId,
+        data: { commentPreview: text.slice(0, 140) },
+      },
+    });
+  }
+
   revalidatePath(`/trainings/${trainingId}`);
 }
 

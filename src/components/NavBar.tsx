@@ -6,12 +6,16 @@ import { signOutAction } from "@/app/actions/auth";
 
 export function NavBar({
   user,
+  unreadCount,
 }: {
   user: { name?: string | null; email?: string | null; image?: string | null };
+  unreadCount: number;
 }) {
   const pathname = usePathname();
   const isTrainings = pathname === "/" || pathname.startsWith("/trainings");
   const isExercises = pathname.startsWith("/exercises");
+  const isNotifications = pathname.startsWith("/notifications");
+  const isSettings = pathname.startsWith("/settings");
 
   return (
     <header className="border-b border-gray-200 bg-white">
@@ -28,6 +32,25 @@ export function NavBar({
             className={isExercises ? "text-blue-600" : "text-gray-700 hover:text-blue-600"}
           >
             Вправи
+          </Link>
+          <Link
+            href="/notifications"
+            className={`flex items-center gap-1.5 ${
+              isNotifications ? "text-blue-600" : "text-gray-700 hover:text-blue-600"
+            }`}
+          >
+            Нотифікації
+            {unreadCount > 0 && (
+              <span className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full bg-blue-600 text-white text-xs font-semibold">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
+          </Link>
+          <Link
+            href="/settings"
+            className={isSettings ? "text-blue-600" : "text-gray-700 hover:text-blue-600"}
+          >
+            Налаштування
           </Link>
         </nav>
         <div className="flex items-center gap-3 text-sm text-gray-600">
