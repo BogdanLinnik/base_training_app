@@ -24,6 +24,10 @@ export async function toggleNotificationRead(notificationId: string) {
   });
 
   revalidatePath("/notifications");
+  // The unread badge lives in the root layout (shared across all routes);
+  // without this, Next.js's client router cache keeps showing the stale
+  // count on any navigation that doesn't otherwise touch "/".
+  revalidatePath("/", "layout");
 }
 
 /** Marks the notification read and sends the user to the related training. */
@@ -39,6 +43,9 @@ export async function openNotification(notificationId: string) {
       where: { id: notificationId },
       data: { readAt: new Date() },
     });
+    // Same reason as above: refresh the shared layout so the unread badge
+    // is correct on the page we're about to redirect to.
+    revalidatePath("/", "layout");
   }
 
   redirect(`/trainings/${notification.trainingId}`);
