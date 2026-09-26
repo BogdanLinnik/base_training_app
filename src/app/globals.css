@@ -3,6 +3,10 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* The UI is only designed for a light theme — tell the browser not to
+     apply its own dark styling (scrollbars, form controls, default canvas)
+     based on the OS/browser color-scheme preference. */
+  color-scheme: light;
 }
 
 @theme inline {
@@ -12,13 +16,7 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+html,
 body {
   background: var(--background);
   color: var(--foreground);
