@@ -5,7 +5,7 @@
 виконує і вносить фактичні результати, обидва можуть коментувати.
 
 Стек: Next.js (App Router) + Prisma + PostgreSQL + Auth.js (Google OAuth).
-Деплой — Vercel (безкоштовний план: хостинг, Postgres, логи).
+Деплой — Vercel (безкоштовний план: хостинг, Prisma Postgres, логи).
 
 ## Локальна розробка
 
@@ -55,18 +55,22 @@ npm run build    # продакшн-збірка
    деплоїть із Git-репозиторію).
 2. На [vercel.com](https://vercel.com) → **Add New → Project** → оберіть цей
    репозиторій.
-3. **Storage → Create Database → Postgres** (Neon, безкоштовний план) і
-   підключіть до проєкту — Vercel сам додасть `DATABASE_URL`/`DIRECT_URL` (або
-   `POSTGRES_PRISMA_URL`/`POSTGRES_URL_NON_POOLING` — тоді перейменуйте їх у
-   Project Settings → Environment Variables на `DATABASE_URL`/`DIRECT_URL`,
-   як очікує `prisma/schema.prisma`).
+3. **Storage → Marketplace → Prisma Postgres** (безкоштовний план) і
+   підключіть до проєкту. Vercel автоматично створює env-змінні для
+   з'єднання з БД — якщо на проєкті вже існує змінна `DATABASE_URL`, він
+   префіксує всі три новостворені змінні (наприклад `DATABAS_POSTGRES_URL`,
+   `DATABAS_DATABASE_URL`, `DATABAS_PRISMA_DATABASE_URL`), щоб уникнути
+   конфлікту. `prisma/schema.prisma` у цьому проєкті вже налаштований на
+   пряме (не-Accelerate) з'єднання під іменем `DATABAS_POSTGRES_URL` — якщо
+   у вас вийшла інша назва, перевірте її в Project Settings → Environment
+   Variables і за потреби поправте `url`/`directUrl` у схемі.
 4. У Project Settings → Environment Variables додайте:
    - `AUTH_SECRET` — випадковий рядок (`node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`)
    - `AUTH_URL` — `https://<ваш-домен>.vercel.app`
    - `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` — з кроку вище
 5. Перед першим релізом виконайте міграції проти продової БД:
-   `npx prisma migrate deploy` (з локальної машини з `DATABASE_URL`,
-   вказаним на прод, або через Vercel CLI / build-команду).
+   `npx prisma migrate deploy` (з локальної машини, з відповідною
+   змінною з'єднання в оточенні, або через Vercel CLI / build-команду).
 6. Деплойте — Vercel автоматично білдитиме й хоститиме застосунок, логи
    виконання (включно з server actions) доступні у вкладці **Logs** проєкту.
 

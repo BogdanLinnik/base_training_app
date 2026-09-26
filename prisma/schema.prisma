@@ -3,9 +3,13 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  // Vercel prefixed these because a placeholder DATABASE_URL/DIRECT_URL
+  // already existed on the project when the Prisma Postgres integration was
+  // added. POSTGRES_URL is the plain direct connection (works with our
+  // stock Prisma Client, no Accelerate extension needed) — see README.
+  url       = env("DATABAS_POSTGRES_URL")
+  directUrl = env("DATABAS_POSTGRES_URL")
 }
 
 // ---------- Auth.js required models ----------
