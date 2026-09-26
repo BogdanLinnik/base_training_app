@@ -91,7 +91,9 @@ export function ComplexExerciseBuilder({
       )}
 
       <div>
-        <label className="block text-sm font-medium mb-1">Назва</label>
+        <label className="block text-sm font-medium mb-1">
+          Назва <span className="text-red-600">*</span>
+        </label>
         <input
           name="name"
           required

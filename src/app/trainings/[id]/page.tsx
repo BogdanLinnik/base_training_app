@@ -15,6 +15,7 @@ import {
   addComment,
   changeTrainingStatus,
   deleteTraining,
+  duplicateTraining,
   submitTrainingResults,
 } from "@/app/actions/trainings";
 import Link from "next/link";
@@ -78,16 +79,16 @@ export default async function TrainingDetailPage({
   const changeStatusWithId = changeTrainingStatus.bind(null, training.id);
   const submitResultsWithId = submitTrainingResults.bind(null, training.id);
   const addCommentWithId = addComment.bind(null, training.id);
+  const duplicateWithId = duplicateTraining.bind(null, training.id);
 
   return (
     <div className="space-y-8 max-w-3xl">
       <div>
         <div className="flex justify-between items-start gap-3">
           <div>
-            <h1 className="text-xl font-semibold">{training.name}</h1>
-            <p className="text-sm text-gray-500 mt-0.5">
-              {training.expectedDate.toLocaleDateString("uk-UA")}
-            </p>
+            <h1 className="text-xl font-semibold">
+              Тренування {training.expectedDate.toLocaleDateString("uk-UA")}
+            </h1>
             {training.description && (
               <p className="text-sm text-gray-600 mt-1">{training.description}</p>
             )}
@@ -116,6 +117,11 @@ export default async function TrainingDetailPage({
               </button>
             </form>
           )}
+          <form action={duplicateWithId}>
+            <button type="submit" className="text-sm text-blue-600 hover:underline">
+              Дублювати
+            </button>
+          </form>
           {editable && (
             <>
               <Link
@@ -146,25 +152,41 @@ export default async function TrainingDetailPage({
             <legend className="px-1 text-sm font-medium">
               {te.exercise.name}{" "}
               <span className="text-xs text-gray-500">
-                ({te.exercise.type === "SIMPLE" ? "проста" : `комплексна, раундів: ${te.roundsCount}`})
+                ({te.exercise.type === "SIMPLE" ? "проста" : "комплексна"}, к-сть кіл:{" "}
+                {te.roundsCount})
               </span>
             </legend>
 
             {te.exercise.type === "SIMPLE" ? (
-              <ExerciseRoundRow
-                attrs={te.exercise.attributeTypes as AttributeType[]}
-                planned={{ weight: te.plannedWeight, time: te.plannedTime, reps: te.plannedReps }}
-                editable={resultsEditable}
-                readonlyValues={!resultsEditable && training.status === "DONE"}
-                fieldPrefix={`res__${te.id}__0__self`}
-                getValue={(attr) => resultValue(te.id, 0, null, attr)}
-              />
+              <div className="space-y-4">
+                {Array.from({ length: te.roundsCount }).map((_, round) => (
+                  <div key={round}>
+                    {te.roundsCount > 1 && (
+                      <div className="text-xs font-medium text-gray-500 mb-2">
+                        Коло {round + 1}
+                      </div>
+                    )}
+                    <ExerciseRoundRow
+                      attrs={te.exercise.attributeTypes as AttributeType[]}
+                      planned={{
+                        weight: te.plannedWeight,
+                        time: te.plannedTime,
+                        reps: te.plannedReps,
+                      }}
+                      editable={resultsEditable}
+                      readonlyValues={!resultsEditable && training.status === "DONE"}
+                      fieldPrefix={`res__${te.id}__${round}__self`}
+                      getValue={(attr) => resultValue(te.id, round, null, attr)}
+                    />
+                  </div>
+                ))}
+              </div>
             ) : (
               <div className="space-y-4">
                 {Array.from({ length: te.roundsCount }).map((_, round) => (
                   <div key={round}>
                     <div className="text-xs font-medium text-gray-500 mb-2">
-                      Раунд {round + 1}
+                      Коло {round + 1}
                     </div>
                     <div className="space-y-3 ml-2">
                       {te.childValues.map((cv) => (
@@ -272,6 +294,7 @@ function ExerciseRoundRow({
               <input
                 type="number"
                 step="any"
+                min={1}
                 name={`${fieldPrefix}__${key}`}
                 defaultValue={getValue(key)}
                 className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm"

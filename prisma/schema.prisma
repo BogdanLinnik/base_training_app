@@ -126,7 +126,6 @@ model Training {
   createdBy   User           @relation("TrainingCreatedBy", fields: [createdById], references: [id])
   forUserId   String
   forUser     User           @relation("TrainingForUser", fields: [forUserId], references: [id])
-  name        String
   expectedDate DateTime
   description String?        @db.Text
   status      TrainingStatus @default(CREATED)

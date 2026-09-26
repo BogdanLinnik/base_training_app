@@ -65,30 +65,36 @@ async function buildTrainingExercisesData(formData: FormData) {
     const exercise = exerciseById.get(item.exerciseId);
     if (!exercise) throw new Error("Вправу не знайдено");
 
+    const roundsCount = item.roundsCount;
+    if (roundsCount == null || roundsCount < 1) {
+      throw new Error(`Вкажіть кількість кіл для вправи «${exercise.name}»`);
+    }
+
     if (exercise.type === "SIMPLE") {
       const attrTypes = exercise.attributeTypes as ("WEIGHT" | "TIME" | "REPS")[];
       for (const attr of attrTypes) {
         const key = attr === "WEIGHT" ? "weight" : attr === "TIME" ? "time" : "reps";
-        if (item.planned?.[key] == null) {
+        const value = item.planned?.[key];
+        if (value == null || value < 1) {
           throw new Error(`Заповніть усі значення атрибутів для вправи «${exercise.name}»`);
         }
       }
       return {
         exerciseId: item.exerciseId,
         order,
-        roundsCount: 1,
+        roundsCount,
         plannedWeight: item.planned?.weight ?? null,
         plannedTime: item.planned?.time ?? null,
         plannedReps: item.planned?.reps ?? null,
       };
     }
 
-    const roundsCount = Math.max(1, item.roundsCount ?? 1);
     for (const c of exercise.components) {
       const childAttrTypes = c.childExercise.attributeTypes as ("WEIGHT" | "TIME" | "REPS")[];
       for (const attr of childAttrTypes) {
         const key = attr === "WEIGHT" ? "weight" : attr === "TIME" ? "time" : "reps";
-        if (item.childValues?.[c.childExerciseId]?.[key] == null) {
+        const value = item.childValues?.[c.childExerciseId]?.[key];
+        if (value == null || value < 1) {
           throw new Error(`Заповніть усі значення атрибутів для вправи «${exercise.name}»`);
         }
       }
@@ -112,22 +118,20 @@ async function buildTrainingExercisesData(formData: FormData) {
 const TODAY = () => new Date().toISOString().slice(0, 10);
 
 function validateTrainingFields(formData: FormData) {
-  const name = String(formData.get("name") ?? "").trim();
   const forUserId = String(formData.get("forUserId") ?? "");
   const expectedDateRaw = String(formData.get("expectedDate") ?? "");
   const description = String(formData.get("description") ?? "").trim();
 
-  if (!name) throw new Error("Вкажіть назву тренування");
   if (!forUserId) throw new Error("Оберіть, для кого тренування");
   if (!expectedDateRaw) throw new Error("Оберіть очікувану дату");
   if (expectedDateRaw < TODAY()) throw new Error("Дата не може бути раніше сьогодні");
 
-  return { name, forUserId, expectedDateRaw, description };
+  return { forUserId, expectedDateRaw, description };
 }
 
 export async function createTraining(formData: FormData) {
   const userId = await requireUserId();
-  const { name, forUserId, expectedDateRaw, description } = validateTrainingFields(formData);
+  const { forUserId, expectedDateRaw, description } = validateTrainingFields(formData);
 
   const trainingExercisesData = await buildTrainingExercisesData(formData);
   const status: TrainingStatus = initialStatusFor(userId, forUserId);
@@ -136,7 +140,6 @@ export async function createTraining(formData: FormData) {
     data: {
       createdById: userId,
       forUserId,
-      name,
       expectedDate: new Date(expectedDateRaw),
       description: description || null,
       status,
@@ -153,7 +156,7 @@ export async function updateTraining(trainingId: string, formData: FormData) {
   const training = await prisma.training.findUniqueOrThrow({ where: { id: trainingId } });
   if (!canEditTraining(training, userId)) throw new Error("Немає прав редагувати це тренування");
 
-  const { name, forUserId, expectedDateRaw, description } = validateTrainingFields(formData);
+  const { forUserId, expectedDateRaw, description } = validateTrainingFields(formData);
 
   const trainingExercisesData = await buildTrainingExercisesData(formData);
   const status: TrainingStatus = initialStatusFor(userId, forUserId);
@@ -164,7 +167,6 @@ export async function updateTraining(trainingId: string, formData: FormData) {
       where: { id: trainingId },
       data: {
         forUserId,
-        name,
         expectedDate: new Date(expectedDateRaw),
         description: description || null,
         status,
@@ -267,4 +269,54 @@ export async function deleteTraining(trainingId: string) {
   await prisma.training.delete({ where: { id: trainingId } });
   revalidatePath("/");
   redirect("/");
+}
+
+/**
+ * Duplicates a training (own or one proposed/assigned to the user). The copy
+ * always belongs to whoever duplicated it — both created by and for them —
+ * with a fresh expected date (today) and no comments/results/status carried
+ * over.
+ */
+export async function duplicateTraining(trainingId: string) {
+  const userId = await requireUserId();
+  const training = await prisma.training.findUniqueOrThrow({
+    where: { id: trainingId },
+    include: {
+      exercises: { orderBy: { order: "asc" }, include: { childValues: true } },
+    },
+  });
+  if (training.createdById !== userId && training.forUserId !== userId) {
+    throw new Error("Немає прав дублювати це тренування");
+  }
+
+  const newTraining = await prisma.training.create({
+    data: {
+      createdById: userId,
+      forUserId: userId,
+      expectedDate: new Date(`${TODAY()}T00:00:00.000Z`),
+      description: training.description,
+      status: initialStatusFor(userId, userId),
+      exercises: {
+        create: training.exercises.map((te) => ({
+          exerciseId: te.exerciseId,
+          order: te.order,
+          roundsCount: te.roundsCount,
+          plannedWeight: te.plannedWeight,
+          plannedTime: te.plannedTime,
+          plannedReps: te.plannedReps,
+          childValues: {
+            create: te.childValues.map((cv) => ({
+              childExerciseId: cv.childExerciseId,
+              plannedWeight: cv.plannedWeight,
+              plannedTime: cv.plannedTime,
+              plannedReps: cv.plannedReps,
+            })),
+          },
+        })),
+      },
+    },
+  });
+
+  revalidatePath("/");
+  redirect(`/trainings/${newTraining.id}`);
 }

@@ -32,7 +32,6 @@ type SelectedExercise = {
 };
 
 export type TrainingBuilderDefaultValues = {
-  name: string;
   forUserId: string;
   expectedDate: string;
   description: string;
@@ -130,7 +129,7 @@ export function TrainingBuilder({
   }
 
   function updateRounds(index: number, value: string) {
-    const num = Math.max(1, Number(value) || 1);
+    const num = value === "" ? 1 : Math.max(1, Number(value) || 1);
     setSelected((prev) => prev.map((s, i) => (i === index ? { ...s, roundsCount: num } : s)));
   }
 
@@ -170,14 +169,8 @@ export function TrainingBuilder({
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     const form = e.currentTarget;
-    const name = (form.elements.namedItem("name") as HTMLInputElement).value.trim();
     const expectedDate = (form.elements.namedItem("expectedDate") as HTMLInputElement).value;
 
-    if (!name) {
-      e.preventDefault();
-      setError("Вкажіть назву тренування");
-      return;
-    }
     if (!expectedDate || expectedDate < today) {
       e.preventDefault();
       setError("Дата не може бути раніше сьогодні");
@@ -194,6 +187,13 @@ export function TrainingBuilder({
       const exercise = exerciseById.get(s.exerciseId);
       if (!exercise) continue;
 
+      if (!s.roundsCount || s.roundsCount < 1) {
+        e.preventDefault();
+        setSelected((prev) => prev.map((sel, si) => (si === i ? { ...sel, expanded: true } : sel)));
+        setError(`Вкажіть кількість кіл для вправи «${exercise.name}»`);
+        return;
+      }
+
       const attrsToCheck: AttrValues[] =
         exercise.type === "SIMPLE"
           ? [s.planned]
@@ -203,11 +203,14 @@ export function TrainingBuilder({
           ? [exercise.attributeTypes]
           : exercise.components.map((c) => c.childExercise.attributeTypes);
 
-      const missing = attrsToCheck.some((values, idx) =>
-        declaredAttrs[idx].some((attr) => values[attr.toLowerCase() as keyof AttrValues] == null)
+      const invalid = attrsToCheck.some((values, idx) =>
+        declaredAttrs[idx].some((attr) => {
+          const value = values[attr.toLowerCase() as keyof AttrValues];
+          return value == null || value < 1;
+        })
       );
 
-      if (missing) {
+      if (invalid) {
         e.preventDefault();
         setSelected((prev) => prev.map((sel, si) => (si === i ? { ...sel, expanded: true } : sel)));
         setError(`Заповніть усі значення атрибутів для вправи «${exercise.name}»`);
@@ -228,16 +231,6 @@ export function TrainingBuilder({
         </p>
       )}
 
-      <div>
-        <label className="block text-sm font-medium mb-1">Назва</label>
-        <input
-          name="name"
-          required
-          defaultValue={defaultValues?.name}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-        />
-      </div>
-
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium mb-1">Для кого</label>
@@ -255,7 +248,9 @@ export function TrainingBuilder({
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Очікувана дата</label>
+          <label className="block text-sm font-medium mb-1">
+            Очікувана дата <span className="text-red-600">*</span>
+          </label>
           <input
             type="date"
             name="expectedDate"
@@ -280,7 +275,8 @@ export function TrainingBuilder({
       <div>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-sm font-medium">
-            Вправи в тренуванні {selected.length > 0 && `(${selected.length})`}
+            Вправи в тренуванні <span className="text-red-600">*</span>{" "}
+            {selected.length > 0 && `(${selected.length})`}
           </h2>
           <ExercisePickerModal
             exercises={exercises}
@@ -342,7 +338,21 @@ export function TrainingBuilder({
                 </div>
 
                 {s.expanded && (
-                  <div className="px-3 pb-3 border-t border-gray-100 pt-3">
+                  <div className="px-3 pb-3 border-t border-gray-100 pt-3 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-gray-600">
+                        К-сть кіл <span className="text-red-600">*</span>:
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        required
+                        value={s.roundsCount}
+                        onChange={(e) => updateRounds(index, e.target.value)}
+                        className="w-16 rounded-md border border-gray-300 px-2 py-1 text-sm"
+                      />
+                    </div>
+
                     {exercise.type === "SIMPLE" ? (
                       <div className="flex flex-wrap gap-3">
                         {exercise.attributeTypes.map((attr) => {
@@ -350,11 +360,13 @@ export function TrainingBuilder({
                           return (
                             <div key={attr}>
                               <label className="block text-xs text-gray-600 mb-1">
-                                {ATTRIBUTE_LABELS[attr]}
+                                {ATTRIBUTE_LABELS[attr]} <span className="text-red-600">*</span>
                               </label>
                               <input
                                 type="number"
                                 step="any"
+                                min={1}
+                                required
                                 value={s.planned[key] ?? ""}
                                 onChange={(e) => updatePlanned(index, key, e.target.value)}
                                 className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm"
@@ -364,47 +376,38 @@ export function TrainingBuilder({
                         })}
                       </div>
                     ) : (
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <label className="text-xs text-gray-600">К-сть раундів:</label>
-                          <input
-                            type="number"
-                            min={1}
-                            value={s.roundsCount}
-                            onChange={(e) => updateRounds(index, e.target.value)}
-                            className="w-16 rounded-md border border-gray-300 px-2 py-1 text-sm"
-                          />
-                        </div>
-                        <ol className="space-y-2 list-decimal list-inside">
-                          {exercise.components.map((c) => (
-                            <li key={c.id} className="text-sm">
-                              {c.childExercise.name}
-                              <div className="flex flex-wrap gap-3 mt-1 ml-4">
-                                {c.childExercise.attributeTypes.map((attr) => {
-                                  const key = attr.toLowerCase() as keyof AttrValues;
-                                  const childVal = s.childValues[c.childExerciseId] ?? EMPTY_ATTRS;
-                                  return (
-                                    <div key={attr}>
-                                      <label className="block text-xs text-gray-600 mb-1">
-                                        {ATTRIBUTE_LABELS[attr]}
-                                      </label>
-                                      <input
-                                        type="number"
-                                        step="any"
-                                        value={childVal[key] ?? ""}
-                                        onChange={(e) =>
-                                          updateChildValue(index, c.childExerciseId, key, e.target.value)
-                                        }
-                                        className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm"
-                                      />
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </li>
-                          ))}
-                        </ol>
-                      </div>
+                      <ol className="space-y-2 list-decimal list-inside">
+                        {exercise.components.map((c) => (
+                          <li key={c.id} className="text-sm">
+                            {c.childExercise.name}
+                            <div className="flex flex-wrap gap-3 mt-1 ml-4">
+                              {c.childExercise.attributeTypes.map((attr) => {
+                                const key = attr.toLowerCase() as keyof AttrValues;
+                                const childVal = s.childValues[c.childExerciseId] ?? EMPTY_ATTRS;
+                                return (
+                                  <div key={attr}>
+                                    <label className="block text-xs text-gray-600 mb-1">
+                                      {ATTRIBUTE_LABELS[attr]}{" "}
+                                      <span className="text-red-600">*</span>
+                                    </label>
+                                    <input
+                                      type="number"
+                                      step="any"
+                                      min={1}
+                                      required
+                                      value={childVal[key] ?? ""}
+                                      onChange={(e) =>
+                                        updateChildValue(index, c.childExerciseId, key, e.target.value)
+                                      }
+                                      className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm"
+                                    />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </li>
+                        ))}
+                      </ol>
                     )}
                   </div>
                 )}

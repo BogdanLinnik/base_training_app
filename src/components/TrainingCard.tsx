@@ -10,7 +10,6 @@ export function TrainingCard({
     id: string;
     createdById: string;
     forUserId: string;
-    name: string;
     status: TrainingStatus;
     expectedDate: Date;
     description: string | null;
@@ -38,8 +37,7 @@ export function TrainingCard({
     >
       <div className="flex justify-between items-start gap-3">
         <div>
-          <div className="font-medium">{training.name}</div>
-          <div className="text-sm text-gray-500">
+          <div className="font-medium">
             {training.expectedDate.toLocaleDateString("uk-UA")}
           </div>
           {otherPartyLabel && <div className="text-sm mt-0.5">{otherPartyLabel}</div>}

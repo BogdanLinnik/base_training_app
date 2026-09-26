@@ -33,7 +33,6 @@ export default async function EditTrainingPage({
   if (!canEditTraining(training, userId)) redirect(`/trainings/${id}`);
 
   const defaultValues: TrainingBuilderDefaultValues = {
-    name: training.name,
     forUserId: training.forUserId,
     expectedDate: training.expectedDate.toISOString().slice(0, 10),
     description: training.description ?? "",
