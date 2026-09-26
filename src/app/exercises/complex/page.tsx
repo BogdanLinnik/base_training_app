@@ -27,16 +27,15 @@ export default async function ComplexExercisesPage() {
           { href: "/exercises/simple", label: "Прості" },
           { href: "/exercises/complex", label: "Комплексні" },
         ]}
+        right={
+          <Link
+            href="/exercises/complex/new"
+            className="rounded-md bg-blue-600 text-white text-sm px-3 py-1.5 hover:bg-blue-700"
+          >
+            + Нова вправа
+          </Link>
+        }
       />
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-semibold">Комплексні вправи</h1>
-        <Link
-          href="/exercises/complex/new"
-          className="rounded-md bg-blue-600 text-white text-sm px-3 py-1.5 hover:bg-blue-700"
-        >
-          + Нова вправа
-        </Link>
-      </div>
 
       <ul className="space-y-3">
         {exercises.map((exercise) => (

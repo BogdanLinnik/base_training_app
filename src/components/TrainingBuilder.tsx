@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ATTRIBUTE_LABELS, type AttributeType } from "@/lib/exercises";
 import { VideoButton } from "@/components/VideoButton";
+import { ExercisePickerModal } from "@/components/ExercisePickerModal";
 
 type User = { id: string; name: string | null; email: string };
 type ChildComponent = {
@@ -22,6 +23,7 @@ export type BuilderExercise = {
 type AttrValues = { weight: number | null; time: number | null; reps: number | null };
 
 type SelectedExercise = {
+  uid: string;
   exerciseId: string;
   roundsCount: number;
   planned: AttrValues;
@@ -48,6 +50,12 @@ export type TrainingBuilderDefaultValues = {
 
 const EMPTY_ATTRS: AttrValues = { weight: null, time: null, reps: null };
 
+function makeUid() {
+  return typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2);
+}
+
 export function TrainingBuilder({
   action,
   users,
@@ -67,6 +75,7 @@ export function TrainingBuilder({
 
   const [selected, setSelected] = useState<SelectedExercise[]>(() =>
     (defaultValues?.exercises ?? []).map((e) => ({
+      uid: makeUid(),
       exerciseId: e.exerciseId,
       roundsCount: e.roundsCount,
       planned: { weight: e.plannedWeight, time: e.plannedTime, reps: e.plannedReps },
@@ -79,14 +88,7 @@ export function TrainingBuilder({
       expanded: true,
     }))
   );
-  const [query, setQuery] = useState("");
   const [dragIndex, setDragIndex] = useState<number | null>(null);
-
-  const available = exercises.filter(
-    (e) =>
-      !selected.some((s) => s.exerciseId === e.id) &&
-      e.name.toLowerCase().includes(query.toLowerCase())
-  );
 
   function addExercise(exerciseId: string) {
     const exercise = exerciseById.get(exerciseId);
@@ -94,6 +96,7 @@ export function TrainingBuilder({
     setSelected((prev) => [
       ...prev,
       {
+        uid: makeUid(),
         exerciseId,
         roundsCount: 1,
         planned: { ...EMPTY_ATTRS },
@@ -103,7 +106,6 @@ export function TrainingBuilder({
         expanded: true,
       },
     ]);
-    setQuery("");
   }
 
   function removeExercise(index: number) {
@@ -205,51 +207,29 @@ export function TrainingBuilder({
       </div>
 
       <div>
-        <h2 className="text-sm font-medium mb-2">Додати вправу</h2>
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Пошук вправи..."
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm mb-2"
-        />
-        <div className="max-h-48 overflow-y-auto rounded-md border border-gray-200 divide-y divide-gray-100 bg-white">
-          {available.map((e) => (
-            <button
-              key={e.id}
-              type="button"
-              onClick={() => addExercise(e.id)}
-              className="w-full flex items-center justify-between px-3 py-2 text-sm text-left hover:bg-gray-50"
-            >
-              <span>
-                {e.name}{" "}
-                <span className="text-xs text-gray-500">
-                  ({e.type === "SIMPLE" ? "проста" : "комплексна"})
-                </span>
-              </span>
-              <span className="text-blue-600 text-xs">+ Додати</span>
-            </button>
-          ))}
-          {available.length === 0 && (
-            <div className="px-3 py-2 text-sm text-gray-500">Нічого не знайдено.</div>
-          )}
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-sm font-medium">
+            Вправи в тренуванні {selected.length > 0 && `(${selected.length})`}
+          </h2>
+          <ExercisePickerModal
+            exercises={exercises}
+            onAdd={addExercise}
+            triggerLabel="Додати вправу"
+          />
         </div>
-      </div>
-
-      <div>
-        <h2 className="text-sm font-medium mb-2">
-          Вправи в тренуванні {selected.length > 0 && `(${selected.length})`}
-        </h2>
-        <p className="text-xs text-gray-500 mb-2">
-          Перетягніть картку, щоб змінити порядок виконання.
-        </p>
+        {selected.length > 0 && (
+          <p className="text-xs text-gray-500 mb-2">
+            Перетягніть картку, щоб змінити порядок виконання. Одну й ту саму вправу можна
+            додати кілька разів.
+          </p>
+        )}
         <div className="space-y-2">
           {selected.map((s, index) => {
             const exercise = exerciseById.get(s.exerciseId);
             if (!exercise) return null;
             return (
               <div
-                key={s.exerciseId}
+                key={s.uid}
                 draggable
                 onDragStart={() => setDragIndex(index)}
                 onDragOver={(e) => e.preventDefault()}
@@ -362,7 +342,7 @@ export function TrainingBuilder({
           })}
           {selected.length === 0 && (
             <p className="text-sm text-gray-500">
-              Ще не обрано жодної вправи — додайте зі списку вище.
+              Ще не обрано жодної вправи — натисніть «Додати вправу».
             </p>
           )}
         </div>

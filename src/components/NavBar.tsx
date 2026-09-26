@@ -16,9 +16,6 @@ export function NavBar({
           <Link href="/exercises/simple" className="hover:text-blue-600">
             Вправи
           </Link>
-          <Link href="/trainings/new" className="hover:text-blue-600">
-            + Нове тренування
-          </Link>
         </nav>
         <div className="flex items-center gap-3 text-sm text-gray-600">
           <span>{user.name ?? user.email}</span>

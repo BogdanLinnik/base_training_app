@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { canEditExercise } from "@/lib/trainings";
 import { updateComplexExercise } from "@/app/actions/exercises";
-import { ComplexExerciseForm } from "@/components/ComplexExerciseForm";
+import { ComplexExerciseBuilder } from "@/components/ComplexExerciseBuilder";
 import { notFound, redirect } from "next/navigation";
 
 export default async function EditComplexExercisePage({
@@ -22,27 +22,27 @@ export default async function EditComplexExercisePage({
     prisma.exercise.findMany({
       where: { type: "SIMPLE" },
       orderBy: { name: "asc" },
-      select: { id: true, name: true },
+      select: { id: true, name: true, youtubeUrl: true },
     }),
   ]);
 
   if (!exercise || exercise.type !== "COMPLEX") notFound();
   if (!canEditExercise(exercise, userId)) redirect("/exercises/complex");
 
-  const order = Object.fromEntries(
-    exercise.components.map((c, index) => [c.childExerciseId, index + 1])
-  );
-
   const updateWithId = updateComplexExercise.bind(null, id);
 
   return (
     <div>
       <h1 className="text-xl font-semibold mb-4">Редагувати комплексну вправу</h1>
-      <ComplexExerciseForm
+      <ComplexExerciseBuilder
         action={updateWithId}
         simpleExercises={simpleExercises}
         submitLabel="Зберегти"
-        defaultValues={{ name: exercise.name, details: exercise.details, order }}
+        defaultValues={{
+          name: exercise.name,
+          details: exercise.details ?? "",
+          children: exercise.components.map((c) => c.childExerciseId),
+        }}
       />
     </div>
   );

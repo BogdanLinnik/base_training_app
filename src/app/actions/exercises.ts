@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { canEditExercise } from "@/lib/trainings";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 
 async function requireUserId() {
   const session = await auth();
@@ -64,16 +65,19 @@ export async function updateSimpleExercise(exerciseId: string, formData: FormDat
   redirect("/exercises/simple");
 }
 
-function parseOrderedChildIds(formData: FormData) {
-  const entries: { id: string; order: number }[] = [];
-  for (const [key, value] of formData.entries()) {
-    if (!key.startsWith("order_")) continue;
-    const order = Number(value);
-    if (!value || Number.isNaN(order) || order <= 0) continue;
-    entries.push({ id: key.slice("order_".length), order });
+const childrenPayloadSchema = z.array(z.string().min(1));
+
+/** Parses and validates the `childrenJson` hidden field from ComplexExerciseBuilder. */
+function parseOrderedChildIds(formData: FormData): string[] {
+  const raw = formData.get("childrenJson");
+  if (typeof raw !== "string") return [];
+  let parsedJson: unknown;
+  try {
+    parsedJson = JSON.parse(raw);
+  } catch {
+    throw new Error("Некоректні дані про вправи");
   }
-  entries.sort((a, b) => a.order - b.order);
-  return entries.map((e) => e.id);
+  return childrenPayloadSchema.parse(parsedJson);
 }
 
 export async function createComplexExercise(formData: FormData) {
@@ -82,7 +86,7 @@ export async function createComplexExercise(formData: FormData) {
   const details = String(formData.get("details") ?? "").trim();
   const childIds = parseOrderedChildIds(formData);
   if (!name) throw new Error("Назва обов'язкова");
-  if (childIds.length === 0) throw new Error("Оберіть хоча б одну вправу і вкажіть порядок");
+  if (childIds.length === 0) throw new Error("Оберіть хоча б одну вправу");
 
   await prisma.exercise.create({
     data: {
@@ -112,7 +116,7 @@ export async function updateComplexExercise(exerciseId: string, formData: FormDa
   const details = String(formData.get("details") ?? "").trim();
   const childIds = parseOrderedChildIds(formData);
   if (!name) throw new Error("Назва обов'язкова");
-  if (childIds.length === 0) throw new Error("Оберіть хоча б одну вправу і вкажіть порядок");
+  if (childIds.length === 0) throw new Error("Оберіть хоча б одну вправу");
 
   await prisma.$transaction([
     prisma.complexExerciseItem.deleteMany({ where: { parentExerciseId: exerciseId } }),
