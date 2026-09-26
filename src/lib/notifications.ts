@@ -16,18 +16,6 @@ export const NOTIFICATION_SETTINGS_LABELS: Record<NotificationSettingKey, string
   emailOnComment: "Коментарі на моїх тренуваннях",
 };
 
-export const NOTIFICATION_TYPE_TO_SETTING: Record<NotificationType, NotificationSettingKey> = {
-  TRAINING_STATUS_CHANGED: "emailOnStatusChange",
-  TRAINING_CREATED_FOR_YOU: "emailOnTrainingCreatedForYou",
-  NEW_COMMENT: "emailOnComment",
-};
-
-export const NOTIFICATION_EMAIL_SUBJECTS: Record<NotificationType, string> = {
-  TRAINING_STATUS_CHANGED: "Статус тренування змінено",
-  TRAINING_CREATED_FOR_YOU: "Нове тренування для вас",
-  NEW_COMMENT: "Новий коментар до тренування",
-};
-
 type NotificationLike = {
   type: NotificationType;
   data: unknown;

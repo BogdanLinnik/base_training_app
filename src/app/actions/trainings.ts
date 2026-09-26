@@ -12,7 +12,6 @@ import {
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { notifyUser } from "@/lib/notify";
 
 async function requireUserId() {
   const session = await auth();
@@ -152,11 +151,13 @@ export async function createTraining(formData: FormData) {
   });
 
   if (forUserId !== userId) {
-    await notifyUser({
-      recipientId: forUserId,
-      actorId: userId,
-      type: "TRAINING_CREATED_FOR_YOU",
-      trainingId: training.id,
+    await prisma.notification.create({
+      data: {
+        userId: forUserId,
+        actorId: userId,
+        type: "TRAINING_CREATED_FOR_YOU",
+        trainingId: training.id,
+      },
     });
   }
 
@@ -207,12 +208,14 @@ export async function changeTrainingStatus(trainingId: string, formData: FormDat
   });
 
   if (training.createdById !== training.forUserId) {
-    await notifyUser({
-      recipientId: training.createdById,
-      actorId: userId,
-      type: "TRAINING_STATUS_CHANGED",
-      trainingId,
-      data: { status: transition.to },
+    await prisma.notification.create({
+      data: {
+        userId: training.createdById,
+        actorId: userId,
+        type: "TRAINING_STATUS_CHANGED",
+        trainingId,
+        data: { status: transition.to },
+      },
     });
   }
 
@@ -284,12 +287,14 @@ export async function addComment(trainingId: string, formData: FormData) {
 
   const recipientId = training.createdById !== userId ? training.createdById : training.forUserId;
   if (recipientId !== userId) {
-    await notifyUser({
-      recipientId,
-      actorId: userId,
-      type: "NEW_COMMENT",
-      trainingId,
-      data: { commentPreview: text.slice(0, 140) },
+    await prisma.notification.create({
+      data: {
+        userId: recipientId,
+        actorId: userId,
+        type: "NEW_COMMENT",
+        trainingId,
+        data: { commentPreview: text.slice(0, 140) },
+      },
     });
   }
 
