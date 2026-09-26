@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { signOutAction } from "@/app/actions/auth";
 
 export function NavBar({
@@ -6,14 +9,24 @@ export function NavBar({
 }: {
   user: { name?: string | null; email?: string | null };
 }) {
+  const pathname = usePathname();
+  const isTrainings = pathname === "/" || pathname.startsWith("/trainings");
+  const isExercises = pathname.startsWith("/exercises");
+
   return (
     <header className="border-b border-gray-200 bg-white">
       <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
         <nav className="flex items-center gap-4 text-sm font-medium">
-          <Link href="/" className="hover:text-blue-600">
+          <Link
+            href="/"
+            className={isTrainings ? "text-blue-600" : "text-gray-700 hover:text-blue-600"}
+          >
             Тренування
           </Link>
-          <Link href="/exercises/simple" className="hover:text-blue-600">
+          <Link
+            href="/exercises/simple"
+            className={isExercises ? "text-blue-600" : "text-gray-700 hover:text-blue-600"}
+          >
             Вправи
           </Link>
         </nav>

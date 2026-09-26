@@ -32,6 +32,7 @@ type SelectedExercise = {
 };
 
 export type TrainingBuilderDefaultValues = {
+  name: string;
   forUserId: string;
   expectedDate: string;
   description: string;
@@ -89,6 +90,9 @@ export function TrainingBuilder({
     }))
   );
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   function addExercise(exerciseId: string) {
     const exercise = exerciseById.get(exerciseId);
@@ -164,9 +168,75 @@ export function TrainingBuilder({
     childValues: s.childValues,
   }));
 
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    const form = e.currentTarget;
+    const name = (form.elements.namedItem("name") as HTMLInputElement).value.trim();
+    const expectedDate = (form.elements.namedItem("expectedDate") as HTMLInputElement).value;
+
+    if (!name) {
+      e.preventDefault();
+      setError("Вкажіть назву тренування");
+      return;
+    }
+    if (!expectedDate || expectedDate < today) {
+      e.preventDefault();
+      setError("Дата не може бути раніше сьогодні");
+      return;
+    }
+    if (selected.length === 0) {
+      e.preventDefault();
+      setError("Оберіть хоча б одну вправу");
+      return;
+    }
+
+    for (let i = 0; i < selected.length; i++) {
+      const s = selected[i];
+      const exercise = exerciseById.get(s.exerciseId);
+      if (!exercise) continue;
+
+      const attrsToCheck: AttrValues[] =
+        exercise.type === "SIMPLE"
+          ? [s.planned]
+          : exercise.components.map((c) => s.childValues[c.childExerciseId] ?? EMPTY_ATTRS);
+      const declaredAttrs: AttributeType[][] =
+        exercise.type === "SIMPLE"
+          ? [exercise.attributeTypes]
+          : exercise.components.map((c) => c.childExercise.attributeTypes);
+
+      const missing = attrsToCheck.some((values, idx) =>
+        declaredAttrs[idx].some((attr) => values[attr.toLowerCase() as keyof AttrValues] == null)
+      );
+
+      if (missing) {
+        e.preventDefault();
+        setSelected((prev) => prev.map((sel, si) => (si === i ? { ...sel, expanded: true } : sel)));
+        setError(`Заповніть усі значення атрибутів для вправи «${exercise.name}»`);
+        return;
+      }
+    }
+
+    setError(null);
+  }
+
   return (
-    <form action={action} className="space-y-6 max-w-2xl">
+    <form action={action} onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
       <input type="hidden" name="exercisesJson" value={JSON.stringify(payload)} />
+
+      {error && (
+        <p className="rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2">
+          {error}
+        </p>
+      )}
+
+      <div>
+        <label className="block text-sm font-medium mb-1">Назва</label>
+        <input
+          name="name"
+          required
+          defaultValue={defaultValues?.name}
+          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+        />
+      </div>
 
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
@@ -190,6 +260,7 @@ export function TrainingBuilder({
             type="date"
             name="expectedDate"
             required
+            min={today}
             defaultValue={defaultValues?.expectedDate}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
           />

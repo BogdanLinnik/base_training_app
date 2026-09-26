@@ -59,11 +59,36 @@ export function ComplexExerciseBuilder({
     });
   }
 
+  const [error, setError] = useState<string | null>(null);
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    const form = e.currentTarget;
+    const name = (form.elements.namedItem("name") as HTMLInputElement).value.trim();
+
+    if (!name) {
+      e.preventDefault();
+      setError("Вкажіть назву вправи");
+      return;
+    }
+    if (selected.length < 2) {
+      e.preventDefault();
+      setError("Оберіть щонайменше дві вправи");
+      return;
+    }
+    setError(null);
+  }
+
   const payload = selected.map((s) => s.exerciseId);
 
   return (
-    <form action={action} className="space-y-4 max-w-lg">
+    <form action={action} onSubmit={handleSubmit} className="space-y-4 max-w-lg">
       <input type="hidden" name="childrenJson" value={JSON.stringify(payload)} />
+
+      {error && (
+        <p className="rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2">
+          {error}
+        </p>
+      )}
 
       <div>
         <label className="block text-sm font-medium mb-1">Назва</label>
@@ -87,7 +112,8 @@ export function ComplexExerciseBuilder({
       <div>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-sm font-medium">
-            Вправи {selected.length > 0 && `(${selected.length})`}
+            Вправи <span className="text-red-600">*</span>{" "}
+            {selected.length > 0 && `(${selected.length})`}
           </h2>
           <ExercisePickerModal
             exercises={simpleExercises.map((e) => ({ ...e, type: "SIMPLE" as const }))}
@@ -146,7 +172,7 @@ export function ComplexExerciseBuilder({
 
       <button
         type="submit"
-        disabled={selected.length === 0}
+        disabled={selected.length < 2}
         className="rounded-md bg-blue-600 text-white text-sm px-4 py-2 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {submitLabel}

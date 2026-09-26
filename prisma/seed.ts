@@ -79,6 +79,7 @@ async function main() {
       id: "seed-training-1",
       createdById: trainer.id,
       forUserId: athlete.id,
+      name: "Силове тренування на все тіло",
       expectedDate: new Date(),
       description: "Базове силове тренування на все тіло.",
       status: "PENDING_REVIEW",

@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { ATTRIBUTE_LABELS, ATTRIBUTE_TYPES, type AttributeType } from "@/lib/exercises";
 
 export function SimpleExerciseForm({
@@ -14,8 +17,35 @@ export function SimpleExerciseForm({
   };
   submitLabel: string;
 }) {
+  const [error, setError] = useState<string | null>(null);
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    const form = e.currentTarget;
+    const name = (form.elements.namedItem("name") as HTMLInputElement).value.trim();
+    const hasAttribute = ATTRIBUTE_TYPES.some(
+      (attr) => (form.elements.namedItem(`attr_${attr}`) as HTMLInputElement)?.checked
+    );
+
+    if (!name) {
+      e.preventDefault();
+      setError("Вкажіть назву вправи");
+      return;
+    }
+    if (!hasAttribute) {
+      e.preventDefault();
+      setError("Оберіть хоча б один атрибут");
+      return;
+    }
+    setError(null);
+  }
+
   return (
-    <form action={action} className="space-y-4 max-w-lg">
+    <form action={action} onSubmit={handleSubmit} className="space-y-4 max-w-lg">
+      {error && (
+        <p className="rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2">
+          {error}
+        </p>
+      )}
       <div>
         <label className="block text-sm font-medium mb-1">Назва</label>
         <input
@@ -45,7 +75,9 @@ export function SimpleExerciseForm({
         />
       </div>
       <div>
-        <label className="block text-sm font-medium mb-2">Атрибути</label>
+        <label className="block text-sm font-medium mb-2">
+          Атрибути <span className="text-red-600">*</span>
+        </label>
         <div className="flex gap-4">
           {ATTRIBUTE_TYPES.map((attr) => (
             <label key={attr} className="flex items-center gap-2 text-sm">

@@ -24,7 +24,9 @@ export async function createSimpleExercise(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const details = String(formData.get("details") ?? "").trim();
   const youtubeUrl = String(formData.get("youtubeUrl") ?? "").trim();
+  const attributeTypes = parseAttributeTypes(formData);
   if (!name) throw new Error("Назва обов'язкова");
+  if (attributeTypes.length === 0) throw new Error("Оберіть хоча б один атрибут");
 
   await prisma.exercise.create({
     data: {
@@ -32,7 +34,7 @@ export async function createSimpleExercise(formData: FormData) {
       name,
       details: details || null,
       youtubeUrl: youtubeUrl || null,
-      attributeTypes: parseAttributeTypes(formData),
+      attributeTypes,
       createdById: userId,
     },
   });
@@ -49,7 +51,9 @@ export async function updateSimpleExercise(exerciseId: string, formData: FormDat
   const name = String(formData.get("name") ?? "").trim();
   const details = String(formData.get("details") ?? "").trim();
   const youtubeUrl = String(formData.get("youtubeUrl") ?? "").trim();
+  const attributeTypes = parseAttributeTypes(formData);
   if (!name) throw new Error("Назва обов'язкова");
+  if (attributeTypes.length === 0) throw new Error("Оберіть хоча б один атрибут");
 
   await prisma.exercise.update({
     where: { id: exerciseId },
@@ -57,7 +61,7 @@ export async function updateSimpleExercise(exerciseId: string, formData: FormDat
       name,
       details: details || null,
       youtubeUrl: youtubeUrl || null,
-      attributeTypes: parseAttributeTypes(formData),
+      attributeTypes,
     },
   });
 
@@ -86,7 +90,7 @@ export async function createComplexExercise(formData: FormData) {
   const details = String(formData.get("details") ?? "").trim();
   const childIds = parseOrderedChildIds(formData);
   if (!name) throw new Error("Назва обов'язкова");
-  if (childIds.length === 0) throw new Error("Оберіть хоча б одну вправу");
+  if (childIds.length < 2) throw new Error("Оберіть щонайменше дві вправи");
 
   await prisma.exercise.create({
     data: {
@@ -116,7 +120,7 @@ export async function updateComplexExercise(exerciseId: string, formData: FormDa
   const details = String(formData.get("details") ?? "").trim();
   const childIds = parseOrderedChildIds(formData);
   if (!name) throw new Error("Назва обов'язкова");
-  if (childIds.length === 0) throw new Error("Оберіть хоча б одну вправу");
+  if (childIds.length < 2) throw new Error("Оберіть щонайменше дві вправи");
 
   await prisma.$transaction([
     prisma.complexExerciseItem.deleteMany({ where: { parentExerciseId: exerciseId } }),

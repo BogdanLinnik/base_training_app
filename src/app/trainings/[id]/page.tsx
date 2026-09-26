@@ -84,9 +84,10 @@ export default async function TrainingDetailPage({
       <div>
         <div className="flex justify-between items-start gap-3">
           <div>
-            <h1 className="text-xl font-semibold">
-              Тренування {training.expectedDate.toLocaleDateString("uk-UA")}
-            </h1>
+            <h1 className="text-xl font-semibold">{training.name}</h1>
+            <p className="text-sm text-gray-500 mt-0.5">
+              {training.expectedDate.toLocaleDateString("uk-UA")}
+            </p>
             {training.description && (
               <p className="text-sm text-gray-600 mt-1">{training.description}</p>
             )}

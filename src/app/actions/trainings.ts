@@ -57,7 +57,7 @@ async function buildTrainingExercisesData(formData: FormData) {
 
   const exercises = await prisma.exercise.findMany({
     where: { id: { in: payload.map((p) => p.exerciseId) } },
-    include: { components: { orderBy: { order: "asc" } } },
+    include: { components: { orderBy: { order: "asc" }, include: { childExercise: true } } },
   });
   const exerciseById = new Map(exercises.map((e) => [e.id, e]));
 
@@ -66,6 +66,13 @@ async function buildTrainingExercisesData(formData: FormData) {
     if (!exercise) throw new Error("Вправу не знайдено");
 
     if (exercise.type === "SIMPLE") {
+      const attrTypes = exercise.attributeTypes as ("WEIGHT" | "TIME" | "REPS")[];
+      for (const attr of attrTypes) {
+        const key = attr === "WEIGHT" ? "weight" : attr === "TIME" ? "time" : "reps";
+        if (item.planned?.[key] == null) {
+          throw new Error(`Заповніть усі значення атрибутів для вправи «${exercise.name}»`);
+        }
+      }
       return {
         exerciseId: item.exerciseId,
         order,
@@ -77,6 +84,15 @@ async function buildTrainingExercisesData(formData: FormData) {
     }
 
     const roundsCount = Math.max(1, item.roundsCount ?? 1);
+    for (const c of exercise.components) {
+      const childAttrTypes = c.childExercise.attributeTypes as ("WEIGHT" | "TIME" | "REPS")[];
+      for (const attr of childAttrTypes) {
+        const key = attr === "WEIGHT" ? "weight" : attr === "TIME" ? "time" : "reps";
+        if (item.childValues?.[c.childExerciseId]?.[key] == null) {
+          throw new Error(`Заповніть усі значення атрибутів для вправи «${exercise.name}»`);
+        }
+      }
+    }
     return {
       exerciseId: item.exerciseId,
       order,
@@ -93,14 +109,25 @@ async function buildTrainingExercisesData(formData: FormData) {
   });
 }
 
-export async function createTraining(formData: FormData) {
-  const userId = await requireUserId();
+const TODAY = () => new Date().toISOString().slice(0, 10);
+
+function validateTrainingFields(formData: FormData) {
+  const name = String(formData.get("name") ?? "").trim();
   const forUserId = String(formData.get("forUserId") ?? "");
   const expectedDateRaw = String(formData.get("expectedDate") ?? "");
   const description = String(formData.get("description") ?? "").trim();
 
+  if (!name) throw new Error("Вкажіть назву тренування");
   if (!forUserId) throw new Error("Оберіть, для кого тренування");
   if (!expectedDateRaw) throw new Error("Оберіть очікувану дату");
+  if (expectedDateRaw < TODAY()) throw new Error("Дата не може бути раніше сьогодні");
+
+  return { name, forUserId, expectedDateRaw, description };
+}
+
+export async function createTraining(formData: FormData) {
+  const userId = await requireUserId();
+  const { name, forUserId, expectedDateRaw, description } = validateTrainingFields(formData);
 
   const trainingExercisesData = await buildTrainingExercisesData(formData);
   const status: TrainingStatus = initialStatusFor(userId, forUserId);
@@ -109,6 +136,7 @@ export async function createTraining(formData: FormData) {
     data: {
       createdById: userId,
       forUserId,
+      name,
       expectedDate: new Date(expectedDateRaw),
       description: description || null,
       status,
@@ -125,12 +153,7 @@ export async function updateTraining(trainingId: string, formData: FormData) {
   const training = await prisma.training.findUniqueOrThrow({ where: { id: trainingId } });
   if (!canEditTraining(training, userId)) throw new Error("Немає прав редагувати це тренування");
 
-  const forUserId = String(formData.get("forUserId") ?? "");
-  const expectedDateRaw = String(formData.get("expectedDate") ?? "");
-  const description = String(formData.get("description") ?? "").trim();
-
-  if (!forUserId) throw new Error("Оберіть, для кого тренування");
-  if (!expectedDateRaw) throw new Error("Оберіть очікувану дату");
+  const { name, forUserId, expectedDateRaw, description } = validateTrainingFields(formData);
 
   const trainingExercisesData = await buildTrainingExercisesData(formData);
   const status: TrainingStatus = initialStatusFor(userId, forUserId);
@@ -141,6 +164,7 @@ export async function updateTraining(trainingId: string, formData: FormData) {
       where: { id: trainingId },
       data: {
         forUserId,
+        name,
         expectedDate: new Date(expectedDateRaw),
         description: description || null,
         status,
