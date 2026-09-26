@@ -9,6 +9,12 @@ const providers: Provider[] = [
   Google({
     clientId: process.env.AUTH_GOOGLE_ID,
     clientSecret: process.env.AUTH_GOOGLE_SECRET,
+    // Google is the only real identity provider here (the dev-only
+    // Credentials login never exists in prod), and Google verifies emails
+    // itself, so auto-linking a Google sign-in to an existing user with the
+    // same email is safe — there's no other OAuth provider whose emails
+    // could be spoofed to hijack an account.
+    allowDangerousEmailAccountLinking: true,
   }),
 ];
 

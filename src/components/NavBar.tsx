@@ -7,7 +7,7 @@ import { signOutAction } from "@/app/actions/auth";
 export function NavBar({
   user,
 }: {
-  user: { name?: string | null; email?: string | null };
+  user: { name?: string | null; email?: string | null; image?: string | null };
 }) {
   const pathname = usePathname();
   const isTrainings = pathname === "/" || pathname.startsWith("/trainings");
@@ -31,7 +31,18 @@ export function NavBar({
           </Link>
         </nav>
         <div className="flex items-center gap-3 text-sm text-gray-600">
-          <span>{user.name ?? user.email}</span>
+          <span className="flex items-center gap-2">
+            Привіт, {user.name ?? user.email}
+            {user.image && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={user.image}
+                alt=""
+                referrerPolicy="no-referrer"
+                className="w-6 h-6 rounded-full object-cover"
+              />
+            )}
+          </span>
           <form action={signOutAction}>
             <button type="submit" className="text-blue-600 hover:underline">
               Вийти
