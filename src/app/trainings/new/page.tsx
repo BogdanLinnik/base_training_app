@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { createTraining } from "@/app/actions/trainings";
-import { TrainingForm } from "@/components/TrainingForm";
+import { TrainingBuilder } from "@/components/TrainingBuilder";
 import type { AttributeType } from "@/lib/exercises";
 
 export default async function NewTrainingPage() {
@@ -19,7 +19,7 @@ export default async function NewTrainingPage() {
   return (
     <div>
       <h1 className="text-xl font-semibold mb-4">Нове тренування</h1>
-      <TrainingForm
+      <TrainingBuilder
         action={createTraining}
         users={users}
         currentUserId={userId}

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Tabs } from "@/components/Tabs";
 import { ATTRIBUTE_LABELS, type AttributeType } from "@/lib/exercises";
 import { canEditExercise } from "@/lib/trainings";
+import { VideoButton } from "@/components/VideoButton";
 
 export default async function SimpleExercisesPage() {
   const session = await auth();
@@ -53,13 +54,9 @@ export default async function SimpleExercisesPage() {
                   ))}
                 </div>
                 {exercise.youtubeUrl && (
-                  <a
-                    href={exercise.youtubeUrl}
-                    target="_blank"
-                    className="text-xs text-blue-600 hover:underline mt-2 inline-block"
-                  >
-                    Відео на YouTube
-                  </a>
+                  <div className="mt-2">
+                    <VideoButton url={exercise.youtubeUrl} />
+                  </div>
                 )}
               </div>
               {canEditExercise(exercise, userId) && (

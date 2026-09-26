@@ -11,6 +11,7 @@ import {
 } from "@/lib/trainings";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 
 async function requireUserId() {
   const session = await auth();
@@ -24,61 +25,68 @@ function numberOrNull(value: FormDataEntryValue | null): number | null {
   return Number.isNaN(n) ? null : n;
 }
 
-/** Parses `order_<exerciseId>` fields into exercise ids sorted by that order. */
-function parseSelectedExerciseIds(formData: FormData): string[] {
-  const entries: { id: string; order: number }[] = [];
-  for (const [key, value] of formData.entries()) {
-    if (!key.startsWith("order_")) continue;
-    const order = Number(value);
-    if (!value || Number.isNaN(order) || order <= 0) continue;
-    entries.push({ id: key.slice("order_".length), order });
-  }
-  entries.sort((a, b) => a.order - b.order);
-  return entries.map((e) => e.id);
-}
+const attrValuesSchema = z.object({
+  weight: z.number().nullable().optional(),
+  time: z.number().nullable().optional(),
+  reps: z.number().nullable().optional(),
+});
 
+const exercisesPayloadSchema = z.array(
+  z.object({
+    exerciseId: z.string().min(1),
+    roundsCount: z.number().int().min(1).optional(),
+    planned: attrValuesSchema.nullable().optional(),
+    childValues: z.record(z.string(), attrValuesSchema).optional(),
+  })
+);
+
+/** Parses and validates the `exercisesJson` hidden field produced by TrainingBuilder. */
 async function buildTrainingExercisesData(formData: FormData) {
-  const exerciseIds = parseSelectedExerciseIds(formData);
-  if (exerciseIds.length === 0) throw new Error("Оберіть хоча б одну вправу");
+  const raw = formData.get("exercisesJson");
+  if (typeof raw !== "string") throw new Error("Оберіть хоча б одну вправу");
+
+  let parsedJson: unknown;
+  try {
+    parsedJson = JSON.parse(raw);
+  } catch {
+    throw new Error("Некоректні дані про вправи");
+  }
+
+  const payload = exercisesPayloadSchema.parse(parsedJson);
+  if (payload.length === 0) throw new Error("Оберіть хоча б одну вправу");
 
   const exercises = await prisma.exercise.findMany({
-    where: { id: { in: exerciseIds } },
+    where: { id: { in: payload.map((p) => p.exerciseId) } },
     include: { components: { orderBy: { order: "asc" } } },
   });
   const exerciseById = new Map(exercises.map((e) => [e.id, e]));
 
-  return exerciseIds.map((exerciseId, order) => {
-    const exercise = exerciseById.get(exerciseId);
+  return payload.map((item, order) => {
+    const exercise = exerciseById.get(item.exerciseId);
     if (!exercise) throw new Error("Вправу не знайдено");
 
     if (exercise.type === "SIMPLE") {
       return {
-        exerciseId,
+        exerciseId: item.exerciseId,
         order,
         roundsCount: 1,
-        plannedWeight: numberOrNull(formData.get(`weight_${exerciseId}`)),
-        plannedTime: numberOrNull(formData.get(`time_${exerciseId}`)),
-        plannedReps: numberOrNull(formData.get(`reps_${exerciseId}`)),
+        plannedWeight: item.planned?.weight ?? null,
+        plannedTime: item.planned?.time ?? null,
+        plannedReps: item.planned?.reps ?? null,
       };
     }
 
-    const roundsCount = Math.max(1, numberOrNull(formData.get(`rounds_${exerciseId}`)) ?? 1);
+    const roundsCount = Math.max(1, item.roundsCount ?? 1);
     return {
-      exerciseId,
+      exerciseId: item.exerciseId,
       order,
       roundsCount,
       childValues: {
         create: exercise.components.map((c) => ({
           childExerciseId: c.childExerciseId,
-          plannedWeight: numberOrNull(
-            formData.get(`childweight_${exerciseId}__${c.childExerciseId}`)
-          ),
-          plannedTime: numberOrNull(
-            formData.get(`childtime_${exerciseId}__${c.childExerciseId}`)
-          ),
-          plannedReps: numberOrNull(
-            formData.get(`childreps_${exerciseId}__${c.childExerciseId}`)
-          ),
+          plannedWeight: item.childValues?.[c.childExerciseId]?.weight ?? null,
+          plannedTime: item.childValues?.[c.childExerciseId]?.time ?? null,
+          plannedReps: item.childValues?.[c.childExerciseId]?.reps ?? null,
         })),
       },
     };

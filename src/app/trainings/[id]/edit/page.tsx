@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { canEditTraining } from "@/lib/trainings";
 import { updateTraining } from "@/app/actions/trainings";
-import { TrainingForm, type TrainingDefaultValues } from "@/components/TrainingForm";
+import { TrainingBuilder, type TrainingBuilderDefaultValues } from "@/components/TrainingBuilder";
 import type { AttributeType } from "@/lib/exercises";
 
 export default async function EditTrainingPage({
@@ -19,7 +19,7 @@ export default async function EditTrainingPage({
     prisma.training.findUnique({
       where: { id },
       include: {
-        exercises: { include: { childValues: true } },
+        exercises: { orderBy: { order: "asc" }, include: { childValues: true } },
       },
     }),
     prisma.user.findMany({ orderBy: { name: "asc" } }),
@@ -32,32 +32,27 @@ export default async function EditTrainingPage({
   if (!training) notFound();
   if (!canEditTraining(training, userId)) redirect(`/trainings/${id}`);
 
-  const defaultValues: TrainingDefaultValues = {
+  const defaultValues: TrainingBuilderDefaultValues = {
     forUserId: training.forUserId,
     expectedDate: training.expectedDate.toISOString().slice(0, 10),
     description: training.description ?? "",
-    exercises: Object.fromEntries(
-      training.exercises.map((te) => [
-        te.exerciseId,
-        {
-          order: te.order,
-          roundsCount: te.roundsCount,
-          plannedWeight: te.plannedWeight,
-          plannedTime: te.plannedTime,
-          plannedReps: te.plannedReps,
-          childValues: Object.fromEntries(
-            te.childValues.map((cv) => [
-              cv.childExerciseId,
-              {
-                plannedWeight: cv.plannedWeight,
-                plannedTime: cv.plannedTime,
-                plannedReps: cv.plannedReps,
-              },
-            ])
-          ),
-        },
-      ])
-    ),
+    exercises: training.exercises.map((te) => ({
+      exerciseId: te.exerciseId,
+      roundsCount: te.roundsCount,
+      plannedWeight: te.plannedWeight,
+      plannedTime: te.plannedTime,
+      plannedReps: te.plannedReps,
+      childValues: Object.fromEntries(
+        te.childValues.map((cv) => [
+          cv.childExerciseId,
+          {
+            plannedWeight: cv.plannedWeight,
+            plannedTime: cv.plannedTime,
+            plannedReps: cv.plannedReps,
+          },
+        ])
+      ),
+    })),
   };
 
   const updateWithId = updateTraining.bind(null, id);
@@ -65,7 +60,7 @@ export default async function EditTrainingPage({
   return (
     <div>
       <h1 className="text-xl font-semibold mb-4">Редагувати тренування</h1>
-      <TrainingForm
+      <TrainingBuilder
         action={updateWithId}
         users={users}
         currentUserId={userId}
