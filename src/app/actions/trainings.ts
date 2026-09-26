@@ -36,6 +36,7 @@ const exercisesPayloadSchema = z.array(
   z.object({
     exerciseId: z.string().min(1),
     roundsCount: z.number().int().min(1).optional(),
+    comment: z.string().optional(),
     planned: attrValuesSchema.nullable().optional(),
     childValues: z.record(z.string(), attrValuesSchema).optional(),
   })
@@ -84,6 +85,7 @@ async function buildTrainingExercisesData(formData: FormData) {
         exerciseId: item.exerciseId,
         order,
         roundsCount,
+        comment: item.comment?.trim() || null,
         plannedWeight: item.planned?.weight ?? null,
         plannedTime: item.planned?.time ?? null,
         plannedReps: item.planned?.reps ?? null,
@@ -104,6 +106,7 @@ async function buildTrainingExercisesData(formData: FormData) {
       exerciseId: item.exerciseId,
       order,
       roundsCount,
+      comment: item.comment?.trim() || null,
       childValues: {
         create: exercise.components.map((c) => ({
           childExerciseId: c.childExerciseId,

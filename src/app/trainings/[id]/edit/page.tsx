@@ -39,6 +39,7 @@ export default async function EditTrainingPage({
     exercises: training.exercises.map((te) => ({
       exerciseId: te.exerciseId,
       roundsCount: te.roundsCount,
+      comment: te.comment,
       plannedWeight: te.plannedWeight,
       plannedTime: te.plannedTime,
       plannedReps: te.plannedReps,

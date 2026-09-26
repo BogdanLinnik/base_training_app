@@ -26,6 +26,7 @@ type SelectedExercise = {
   uid: string;
   exerciseId: string;
   roundsCount: number;
+  comment: string;
   planned: AttrValues;
   childValues: Record<string, AttrValues>;
   expanded: boolean;
@@ -38,6 +39,7 @@ export type TrainingBuilderDefaultValues = {
   exercises: {
     exerciseId: string;
     roundsCount: number;
+    comment: string | null;
     plannedWeight: number | null;
     plannedTime: number | null;
     plannedReps: number | null;
@@ -78,6 +80,7 @@ export function TrainingBuilder({
       uid: makeUid(),
       exerciseId: e.exerciseId,
       roundsCount: e.roundsCount,
+      comment: e.comment ?? "",
       planned: { weight: e.plannedWeight, time: e.plannedTime, reps: e.plannedReps },
       childValues: Object.fromEntries(
         Object.entries(e.childValues).map(([childId, v]) => [
@@ -102,6 +105,7 @@ export function TrainingBuilder({
         uid: makeUid(),
         exerciseId,
         roundsCount: 1,
+        comment: "",
         planned: { ...EMPTY_ATTRS },
         childValues: Object.fromEntries(
           exercise.components.map((c) => [c.childExerciseId, { ...EMPTY_ATTRS }])
@@ -126,6 +130,10 @@ export function TrainingBuilder({
     setSelected((prev) =>
       prev.map((s, i) => (i === index ? { ...s, planned: { ...s.planned, [key]: num } } : s))
     );
+  }
+
+  function updateComment(index: number, value: string) {
+    setSelected((prev) => prev.map((s, i) => (i === index ? { ...s, comment: value } : s)));
   }
 
   function updateRounds(index: number, value: string) {
@@ -163,6 +171,7 @@ export function TrainingBuilder({
   const payload = selected.map((s) => ({
     exerciseId: s.exerciseId,
     roundsCount: s.roundsCount,
+    comment: s.comment,
     planned: s.planned,
     childValues: s.childValues,
   }));
@@ -409,6 +418,19 @@ export function TrainingBuilder({
                         ))}
                       </ol>
                     )}
+
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">
+                        Коментар до вправи
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={s.comment}
+                        onChange={(e) => updateComment(index, e.target.value)}
+                        placeholder="Наприклад: слідкувати за технікою, збільшити вагу якщо легко..."
+                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
+                      />
+                    </div>
                   </div>
                 )}
               </div>

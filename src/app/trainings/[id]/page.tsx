@@ -157,6 +157,12 @@ export default async function TrainingDetailPage({
               </span>
             </legend>
 
+            {te.comment && (
+              <p className="text-sm text-gray-600 bg-gray-50 border border-gray-100 rounded-md px-3 py-2 mb-3">
+                {te.comment}
+              </p>
+            )}
+
             {te.exercise.type === "SIMPLE" ? (
               <div className="space-y-4">
                 {Array.from({ length: te.roundsCount }).map((_, round) => (

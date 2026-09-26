@@ -158,6 +158,9 @@ model TrainingExercise {
   order        Int
   roundsCount  Int      @default(1)
 
+  // optional note from the training's creator about this exercise
+  comment String? @db.Text
+
   // planned values, used when exercise.type === SIMPLE
   plannedWeight Float?
   plannedTime   Int?
