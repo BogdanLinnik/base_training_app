@@ -15,7 +15,10 @@ export default async function EditSimpleExercisePage({
   const session = await auth();
   const userId = session!.user.id;
 
-  const exercise = await prisma.exercise.findUnique({ where: { id } });
+  const [exercise, otherExercises] = await Promise.all([
+    prisma.exercise.findUnique({ where: { id } }),
+    prisma.exercise.findMany({ where: { id: { not: id } }, select: { name: true } }),
+  ]);
   if (!exercise || exercise.type !== "SIMPLE") notFound();
   if (!canEditExercise(exercise, userId)) redirect("/exercises/simple");
 
@@ -27,6 +30,7 @@ export default async function EditSimpleExercisePage({
       <SimpleExerciseForm
         action={updateWithId}
         submitLabel="Зберегти"
+        otherExerciseNames={otherExercises.map((e) => e.name)}
         defaultValues={{
           name: exercise.name,
           details: exercise.details,

@@ -19,6 +19,17 @@ function parseAttributeTypes(formData: FormData) {
   return ATTRIBUTE_VALUES.filter((key) => formData.get(`attr_${key}`) === "on");
 }
 
+/** Exercise names must be unique regardless of case, across simple and complex alike. */
+async function assertUniqueExerciseName(name: string, excludeId?: string) {
+  const existing = await prisma.exercise.findFirst({
+    where: {
+      name: { equals: name, mode: "insensitive" },
+      ...(excludeId ? { id: { not: excludeId } } : {}),
+    },
+  });
+  if (existing) throw new Error("Вправа з такою назвою вже існує");
+}
+
 export async function createSimpleExercise(formData: FormData) {
   const userId = await requireUserId();
   const name = String(formData.get("name") ?? "").trim();
@@ -27,6 +38,7 @@ export async function createSimpleExercise(formData: FormData) {
   const attributeTypes = parseAttributeTypes(formData);
   if (!name) throw new Error("Назва обов'язкова");
   if (attributeTypes.length === 0) throw new Error("Оберіть хоча б один атрибут");
+  await assertUniqueExerciseName(name);
 
   await prisma.exercise.create({
     data: {
@@ -54,6 +66,7 @@ export async function updateSimpleExercise(exerciseId: string, formData: FormDat
   const attributeTypes = parseAttributeTypes(formData);
   if (!name) throw new Error("Назва обов'язкова");
   if (attributeTypes.length === 0) throw new Error("Оберіть хоча б один атрибут");
+  await assertUniqueExerciseName(name, exerciseId);
 
   await prisma.exercise.update({
     where: { id: exerciseId },
@@ -91,6 +104,7 @@ export async function createComplexExercise(formData: FormData) {
   const childIds = parseOrderedChildIds(formData);
   if (!name) throw new Error("Назва обов'язкова");
   if (childIds.length < 2) throw new Error("Оберіть щонайменше дві вправи");
+  await assertUniqueExerciseName(name);
 
   await prisma.exercise.create({
     data: {
@@ -121,6 +135,7 @@ export async function updateComplexExercise(exerciseId: string, formData: FormDa
   const childIds = parseOrderedChildIds(formData);
   if (!name) throw new Error("Назва обов'язкова");
   if (childIds.length < 2) throw new Error("Оберіть щонайменше дві вправи");
+  await assertUniqueExerciseName(name, exerciseId);
 
   await prisma.$transaction([
     prisma.complexExerciseItem.deleteMany({ where: { parentExerciseId: exerciseId } }),

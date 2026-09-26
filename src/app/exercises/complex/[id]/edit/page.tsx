@@ -14,7 +14,7 @@ export default async function EditComplexExercisePage({
   const session = await auth();
   const userId = session!.user.id;
 
-  const [exercise, simpleExercises] = await Promise.all([
+  const [exercise, simpleExercises, otherExercises] = await Promise.all([
     prisma.exercise.findUnique({
       where: { id },
       include: { components: { orderBy: { order: "asc" } } },
@@ -24,6 +24,7 @@ export default async function EditComplexExercisePage({
       orderBy: { name: "asc" },
       select: { id: true, name: true, youtubeUrl: true },
     }),
+    prisma.exercise.findMany({ where: { id: { not: id } }, select: { name: true } }),
   ]);
 
   if (!exercise || exercise.type !== "COMPLEX") notFound();
@@ -38,6 +39,7 @@ export default async function EditComplexExercisePage({
         action={updateWithId}
         simpleExercises={simpleExercises}
         submitLabel="Зберегти"
+        otherExerciseNames={otherExercises.map((e) => e.name)}
         defaultValues={{
           name: exercise.name,
           details: exercise.details ?? "",

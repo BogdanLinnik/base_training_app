@@ -24,13 +24,16 @@ export function ComplexExerciseBuilder({
   action,
   simpleExercises,
   defaultValues,
+  otherExerciseNames,
   submitLabel,
 }: {
   action: (formData: FormData) => void;
   simpleExercises: SimpleExercise[];
   defaultValues?: ComplexExerciseDefaultValues;
+  otherExerciseNames: string[];
   submitLabel: string;
 }) {
+  const takenNames = new Set(otherExerciseNames.map((n) => n.toLowerCase()));
   const exerciseById = useMemo(
     () => new Map(simpleExercises.map((e) => [e.id, e])),
     [simpleExercises]
@@ -68,6 +71,11 @@ export function ComplexExerciseBuilder({
     if (!name) {
       e.preventDefault();
       setError("Вкажіть назву вправи");
+      return;
+    }
+    if (takenNames.has(name.toLowerCase())) {
+      e.preventDefault();
+      setError("Вправа з такою назвою вже існує");
       return;
     }
     if (selected.length < 2) {

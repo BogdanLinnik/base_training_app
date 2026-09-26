@@ -6,6 +6,7 @@ import { ATTRIBUTE_LABELS, ATTRIBUTE_TYPES, type AttributeType } from "@/lib/exe
 export function SimpleExerciseForm({
   action,
   defaultValues,
+  otherExerciseNames,
   submitLabel,
 }: {
   action: (formData: FormData) => void;
@@ -15,9 +16,11 @@ export function SimpleExerciseForm({
     youtubeUrl: string | null;
     attributeTypes: AttributeType[];
   };
+  otherExerciseNames: string[];
   submitLabel: string;
 }) {
   const [error, setError] = useState<string | null>(null);
+  const takenNames = new Set(otherExerciseNames.map((n) => n.toLowerCase()));
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     const form = e.currentTarget;
@@ -29,6 +32,11 @@ export function SimpleExerciseForm({
     if (!name) {
       e.preventDefault();
       setError("Вкажіть назву вправи");
+      return;
+    }
+    if (takenNames.has(name.toLowerCase())) {
+      e.preventDefault();
+      setError("Вправа з такою назвою вже існує");
       return;
     }
     if (!hasAttribute) {
