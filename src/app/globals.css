@@ -38,3 +38,17 @@ button:disabled,
 [type="submit"]:disabled {
   cursor: not-allowed;
 }
+
+input[type="checkbox"]:not(:disabled),
+input[type="radio"]:not(:disabled),
+label:has(input[type="checkbox"]:not(:disabled)),
+label:has(input[type="radio"]:not(:disabled)) {
+  cursor: pointer;
+}
+
+input[type="checkbox"]:disabled,
+input[type="radio"]:disabled,
+label:has(input[type="checkbox"]:disabled),
+label:has(input[type="radio"]:disabled) {
+  cursor: not-allowed;
+}
