@@ -282,7 +282,7 @@ export function TrainingBuilder({
       </div>
 
       <div>
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
           <h2 className="text-sm font-medium">
             Вправи в тренуванні <span className="text-red-600">*</span>{" "}
             {selected.length > 0 && `(${selected.length})`}
@@ -318,7 +318,7 @@ export function TrainingBuilder({
                   dragIndex === index ? "border-blue-400 opacity-50" : "border-gray-200"
                 }`}
               >
-                <div className="flex items-center gap-2 px-3 py-2">
+                <div className="flex flex-wrap items-center gap-2 px-3 py-2">
                   <span className="cursor-grab text-gray-400 select-none" title="Перетягнути">
                     ⠿
                   </span>
@@ -326,10 +326,10 @@ export function TrainingBuilder({
                   <button
                     type="button"
                     onClick={() => toggleExpanded(index)}
-                    className="flex-1 flex items-center gap-2 text-left"
+                    className="flex-1 min-w-[8rem] flex items-center gap-2 text-left"
                   >
                     <span className="text-xs text-gray-400">{s.expanded ? "▾" : "▸"}</span>
-                    <span className="text-sm font-medium">{exercise.name}</span>
+                    <span className="text-sm font-medium break-words">{exercise.name}</span>
                     <span className="text-xs text-gray-500">
                       ({exercise.type === "SIMPLE" ? "проста" : "комплексна"})
                     </span>

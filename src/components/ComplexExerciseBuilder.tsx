@@ -120,7 +120,7 @@ export function ComplexExerciseBuilder({
       </div>
 
       <div>
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
           <h2 className="text-sm font-medium">
             Вправи <span className="text-red-600">*</span>{" "}
             {selected.length > 0 && `(${selected.length})`}
@@ -160,7 +160,7 @@ export function ComplexExerciseBuilder({
                   ⠿
                 </span>
                 <span className="text-xs text-gray-400 w-5 shrink-0">{index + 1}.</span>
-                <span className="flex-1 text-sm">{exercise.name}</span>
+                <span className="flex-1 min-w-0 text-sm break-words">{exercise.name}</span>
                 {exercise.youtubeUrl && <VideoButton url={exercise.youtubeUrl} />}
                 <button
                   type="button"

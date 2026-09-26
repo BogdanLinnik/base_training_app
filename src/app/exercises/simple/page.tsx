@@ -2,6 +2,7 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { Tabs } from "@/components/Tabs";
+import { AddButton } from "@/components/AddButton";
 import { ATTRIBUTE_LABELS, type AttributeType } from "@/lib/exercises";
 import { canEditExercise } from "@/lib/trainings";
 import { VideoButton } from "@/components/VideoButton";
@@ -28,21 +29,14 @@ export default async function SimpleExercisesPage() {
           { href: "/exercises/simple", label: "Прості" },
           { href: "/exercises/complex", label: "Комплексні" },
         ]}
-        right={
-          <Link
-            href="/exercises/simple/new"
-            className="rounded-md bg-blue-600 text-white text-sm px-3 py-1.5 hover:bg-blue-700"
-          >
-            + Нова вправа
-          </Link>
-        }
+        right={<AddButton href="/exercises/simple/new" label="Нова вправа" />}
       />
 
       <ul className="space-y-3">
         {exercises.map((exercise) => (
           <li key={exercise.id} className="rounded-lg border border-gray-200 bg-white p-4">
-            <div className="flex justify-between items-start gap-3">
-              <div>
+            <div className="flex flex-wrap justify-between items-start gap-3">
+              <div className="min-w-0">
                 <div className="font-medium">{exercise.name}</div>
                 {exercise.details && (
                   <p className="text-sm text-gray-600 mt-1">{exercise.details}</p>

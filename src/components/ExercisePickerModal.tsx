@@ -65,7 +65,7 @@ export function ExercisePickerModal({
                   onClick={() => onAdd(e.id)}
                   className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-left hover:bg-gray-50"
                 >
-                  <span>
+                  <span className="min-w-0 break-words">
                     {e.name}{" "}
                     <span className="text-xs text-gray-500">
                       ({e.type === "SIMPLE" ? "проста" : "комплексна"})

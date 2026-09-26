@@ -88,7 +88,7 @@ export function SimpleExerciseForm({
         <label className="block text-sm font-medium mb-2">
           Атрибути <span className="text-red-600">*</span>
         </label>
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-x-4 gap-y-2">
           {ATTRIBUTE_TYPES.map((attr) => (
             <label key={attr} className="flex items-center gap-2 text-sm">
               <input

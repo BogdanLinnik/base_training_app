@@ -84,8 +84,8 @@ export default async function TrainingDetailPage({
   return (
     <div className="space-y-8 max-w-3xl">
       <div>
-        <div className="flex justify-between items-start gap-3">
-          <div>
+        <div className="flex flex-wrap justify-between items-start gap-3">
+          <div className="min-w-0">
             <h1 className="text-xl font-semibold">
               Тренування {training.expectedDate.toLocaleDateString("uk-UA")}
             </h1>
@@ -106,7 +106,7 @@ export default async function TrainingDetailPage({
           </div>
         </div>
 
-        <div className="mt-4 flex items-center gap-3">
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           {transition && (
             <form action={changeStatusWithId}>
               <button

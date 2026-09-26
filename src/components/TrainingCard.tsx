@@ -36,7 +36,7 @@ export function TrainingCard({
       className="block rounded-lg border border-gray-200 bg-white p-4 hover:border-blue-300"
     >
       <div className="flex justify-between items-start gap-3">
-        <div>
+        <div className="min-w-0">
           <div className="font-medium">
             {training.expectedDate.toLocaleDateString("uk-UA")}
           </div>
