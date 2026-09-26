@@ -142,3 +142,24 @@ export async function updateComplexExercise(exerciseId: string, formData: FormDa
   revalidatePath("/exercises/complex");
   redirect("/exercises/complex");
 }
+
+export async function deleteExercise(exerciseId: string) {
+  const userId = await requireUserId();
+  const exercise = await prisma.exercise.findUniqueOrThrow({ where: { id: exerciseId } });
+  if (!canEditExercise(exercise, userId)) throw new Error("Немає прав видаляти цю вправу");
+
+  const [usedInTraining, usedInComplex] = await Promise.all([
+    prisma.trainingExercise.count({ where: { exerciseId } }),
+    prisma.complexExerciseItem.count({ where: { childExerciseId: exerciseId } }),
+  ]);
+  if (usedInTraining > 0 || usedInComplex > 0) {
+    throw new Error(
+      "Неможливо видалити вправу, яка використовується в тренуванні або комплексній вправі"
+    );
+  }
+
+  await prisma.exercise.delete({ where: { id: exerciseId } });
+
+  const path = exercise.type === "SIMPLE" ? "/exercises/simple" : "/exercises/complex";
+  revalidatePath(path);
+}

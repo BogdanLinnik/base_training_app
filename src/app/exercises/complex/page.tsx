@@ -3,21 +3,26 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { Tabs } from "@/components/Tabs";
 import { canEditExercise } from "@/lib/trainings";
+import { getUsedExerciseIds } from "@/lib/exerciseUsage";
+import { deleteExercise } from "@/app/actions/exercises";
 
 export default async function ComplexExercisesPage() {
   const session = await auth();
   const userId = session!.user.id;
 
-  const exercises = await prisma.exercise.findMany({
-    where: { type: "COMPLEX" },
-    orderBy: { createdAt: "desc" },
-    include: {
-      components: {
-        orderBy: { order: "asc" },
-        include: { childExercise: true },
+  const [exercises, usedExerciseIds] = await Promise.all([
+    prisma.exercise.findMany({
+      where: { type: "COMPLEX" },
+      orderBy: { createdAt: "desc" },
+      include: {
+        components: {
+          orderBy: { order: "asc" },
+          include: { childExercise: true },
+        },
       },
-    },
-  });
+    }),
+    getUsedExerciseIds(),
+  ]);
 
   return (
     <div>
@@ -53,12 +58,28 @@ export default async function ComplexExercisesPage() {
                 </ol>
               </div>
               {canEditExercise(exercise, userId) && (
-                <Link
-                  href={`/exercises/complex/${exercise.id}/edit`}
-                  className="text-sm text-blue-600 hover:underline shrink-0"
-                >
-                  Редагувати
-                </Link>
+                <div className="flex items-center gap-3 shrink-0">
+                  <Link
+                    href={`/exercises/complex/${exercise.id}/edit`}
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    Редагувати
+                  </Link>
+                  {usedExerciseIds.has(exercise.id) ? (
+                    <span className="text-xs text-gray-400">Використовується</span>
+                  ) : (
+                    <form
+                      action={async () => {
+                        "use server";
+                        await deleteExercise(exercise.id);
+                      }}
+                    >
+                      <button type="submit" className="text-sm text-red-600 hover:underline">
+                        Видалити
+                      </button>
+                    </form>
+                  )}
+                </div>
               )}
             </div>
           </li>

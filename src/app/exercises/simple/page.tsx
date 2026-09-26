@@ -5,15 +5,20 @@ import { Tabs } from "@/components/Tabs";
 import { ATTRIBUTE_LABELS, type AttributeType } from "@/lib/exercises";
 import { canEditExercise } from "@/lib/trainings";
 import { VideoButton } from "@/components/VideoButton";
+import { getUsedExerciseIds } from "@/lib/exerciseUsage";
+import { deleteExercise } from "@/app/actions/exercises";
 
 export default async function SimpleExercisesPage() {
   const session = await auth();
   const userId = session!.user.id;
 
-  const exercises = await prisma.exercise.findMany({
-    where: { type: "SIMPLE" },
-    orderBy: { createdAt: "desc" },
-  });
+  const [exercises, usedExerciseIds] = await Promise.all([
+    prisma.exercise.findMany({
+      where: { type: "SIMPLE" },
+      orderBy: { createdAt: "desc" },
+    }),
+    getUsedExerciseIds(),
+  ]);
 
   return (
     <div>
@@ -59,12 +64,28 @@ export default async function SimpleExercisesPage() {
                 )}
               </div>
               {canEditExercise(exercise, userId) && (
-                <Link
-                  href={`/exercises/simple/${exercise.id}/edit`}
-                  className="text-sm text-blue-600 hover:underline shrink-0"
-                >
-                  Редагувати
-                </Link>
+                <div className="flex items-center gap-3 shrink-0">
+                  <Link
+                    href={`/exercises/simple/${exercise.id}/edit`}
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    Редагувати
+                  </Link>
+                  {usedExerciseIds.has(exercise.id) ? (
+                    <span className="text-xs text-gray-400">Використовується</span>
+                  ) : (
+                    <form
+                      action={async () => {
+                        "use server";
+                        await deleteExercise(exercise.id);
+                      }}
+                    >
+                      <button type="submit" className="text-sm text-red-600 hover:underline">
+                        Видалити
+                      </button>
+                    </form>
+                  )}
+                </div>
               )}
             </div>
           </li>
