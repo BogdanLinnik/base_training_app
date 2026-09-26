@@ -1,0 +1,286 @@
+import { notFound } from "next/navigation";
+import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
+import {
+  canEditTraining,
+  canEnterResults,
+  canTransition,
+  deriveTrainingTags,
+} from "@/lib/trainings";
+import { buildProgressUnits, overallProgressPercent } from "@/lib/progress";
+import { StatusBadge, TagBadge } from "@/components/StatusBadge";
+import { ProgressBadge } from "@/components/ProgressBadge";
+import { ATTRIBUTE_LABELS, type AttributeType } from "@/lib/exercises";
+import {
+  addComment,
+  changeTrainingStatus,
+  deleteTraining,
+  submitTrainingResults,
+} from "@/app/actions/trainings";
+import Link from "next/link";
+
+export default async function TrainingDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const session = await auth();
+  const userId = session!.user.id;
+
+  const training = await prisma.training.findUnique({
+    where: { id },
+    include: {
+      createdBy: { select: { id: true, name: true, email: true } },
+      forUser: { select: { id: true, name: true, email: true } },
+      comments: {
+        orderBy: { createdAt: "asc" },
+        include: { author: { select: { name: true, email: true } } },
+      },
+      exercises: {
+        orderBy: { order: "asc" },
+        include: {
+          exercise: true,
+          childValues: { include: { childExercise: true } },
+          results: true,
+        },
+      },
+    },
+  });
+
+  if (!training) notFound();
+  if (training.createdById !== userId && training.forUserId !== userId) notFound();
+
+  const tags = deriveTrainingTags(training);
+  const transition = canTransition(training, userId);
+  const editable = canEditTraining(training, userId);
+  const resultsEditable = canEnterResults(training, userId);
+  const showProgress = training.status === "IN_PROGRESS" || training.status === "DONE";
+  const percent = showProgress
+    ? overallProgressPercent(buildProgressUnits(training.exercises))
+    : null;
+
+  const resultValue = (
+    teId: string,
+    round: number,
+    childId: string | null,
+    attr: "weight" | "time" | "reps"
+  ) => {
+    const row = training.exercises
+      .find((te) => te.id === teId)
+      ?.results.find((r) => r.roundIndex === round && r.childExerciseId === childId);
+    if (!row) return "";
+    const value =
+      attr === "weight" ? row.actualWeight : attr === "time" ? row.actualTime : row.actualReps;
+    return value ?? "";
+  };
+
+  const changeStatusWithId = changeTrainingStatus.bind(null, training.id);
+  const submitResultsWithId = submitTrainingResults.bind(null, training.id);
+  const addCommentWithId = addComment.bind(null, training.id);
+
+  return (
+    <div className="space-y-8 max-w-3xl">
+      <div>
+        <div className="flex justify-between items-start gap-3">
+          <div>
+            <h1 className="text-xl font-semibold">
+              Тренування {training.expectedDate.toLocaleDateString("uk-UA")}
+            </h1>
+            {training.description && (
+              <p className="text-sm text-gray-600 mt-1">{training.description}</p>
+            )}
+          </div>
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <div className="flex items-center gap-2">
+              <StatusBadge status={training.status} />
+              {percent != null && <ProgressBadge percent={percent} />}
+            </div>
+            <div className="flex gap-1">
+              {tags.map((tag) => (
+                <TagBadge key={tag} tag={tag} />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 flex items-center gap-3">
+          {transition && (
+            <form action={changeStatusWithId}>
+              <button
+                type="submit"
+                className="rounded-md bg-blue-600 text-white text-sm px-3 py-1.5 hover:bg-blue-700"
+              >
+                {transition.label}
+              </button>
+            </form>
+          )}
+          {editable && (
+            <>
+              <Link
+                href={`/trainings/${training.id}/edit`}
+                className="text-sm text-blue-600 hover:underline"
+              >
+                Редагувати
+              </Link>
+              <form
+                action={async () => {
+                  "use server";
+                  await deleteTraining(training.id);
+                }}
+              >
+                <button type="submit" className="text-sm text-red-600 hover:underline">
+                  Видалити
+                </button>
+              </form>
+            </>
+          )}
+        </div>
+      </div>
+
+      <form action={submitResultsWithId} className="space-y-4">
+        <h2 className="text-sm font-semibold">Вправи</h2>
+        {training.exercises.map((te) => (
+          <fieldset key={te.id} className="rounded-lg border border-gray-200 bg-white p-4">
+            <legend className="px-1 text-sm font-medium">
+              {te.exercise.name}{" "}
+              <span className="text-xs text-gray-500">
+                ({te.exercise.type === "SIMPLE" ? "проста" : `комплексна, раундів: ${te.roundsCount}`})
+              </span>
+            </legend>
+
+            {te.exercise.type === "SIMPLE" ? (
+              <ExerciseRoundRow
+                attrs={te.exercise.attributeTypes as AttributeType[]}
+                planned={{ weight: te.plannedWeight, time: te.plannedTime, reps: te.plannedReps }}
+                editable={resultsEditable}
+                readonlyValues={!resultsEditable && training.status === "DONE"}
+                fieldPrefix={`res__${te.id}__0__self`}
+                getValue={(attr) => resultValue(te.id, 0, null, attr)}
+              />
+            ) : (
+              <div className="space-y-4">
+                {Array.from({ length: te.roundsCount }).map((_, round) => (
+                  <div key={round}>
+                    <div className="text-xs font-medium text-gray-500 mb-2">
+                      Раунд {round + 1}
+                    </div>
+                    <div className="space-y-3 ml-2">
+                      {te.childValues.map((cv) => (
+                        <div key={cv.id}>
+                          <div className="text-sm mb-1">{cv.childExercise.name}</div>
+                          <ExerciseRoundRow
+                            attrs={cv.childExercise.attributeTypes as AttributeType[]}
+                            planned={{
+                              weight: cv.plannedWeight,
+                              time: cv.plannedTime,
+                              reps: cv.plannedReps,
+                            }}
+                            editable={resultsEditable}
+                            readonlyValues={!resultsEditable && training.status === "DONE"}
+                            fieldPrefix={`res__${te.id}__${round}__${cv.childExerciseId}`}
+                            getValue={(attr) => resultValue(te.id, round, cv.childExerciseId, attr)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </fieldset>
+        ))}
+        {resultsEditable && (
+          <button
+            type="submit"
+            className="rounded-md bg-blue-600 text-white text-sm px-4 py-2 hover:bg-blue-700"
+          >
+            Зберегти фактичні результати
+          </button>
+        )}
+      </form>
+
+      <div>
+        <h2 className="text-sm font-semibold mb-3">Коментарі</h2>
+        <ul className="space-y-3 mb-4">
+          {training.comments.map((c) => (
+            <li key={c.id} className="rounded-md bg-white border border-gray-200 p-3 text-sm">
+              <div className="text-xs text-gray-500 mb-1">
+                {c.author.name ?? c.author.email} ·{" "}
+                {c.createdAt.toLocaleString("uk-UA")}
+              </div>
+              {c.text}
+            </li>
+          ))}
+          {training.comments.length === 0 && (
+            <p className="text-sm text-gray-500">Ще немає коментарів.</p>
+          )}
+        </ul>
+        <form action={addCommentWithId} className="flex gap-2">
+          <input
+            name="text"
+            required
+            placeholder="Ваш коментар..."
+            className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
+          <button
+            type="submit"
+            className="rounded-md bg-gray-800 text-white text-sm px-4 py-2 hover:bg-gray-700"
+          >
+            Надіслати
+          </button>
+        </form>
+      </div>
+
+      <Link href="/" className="text-sm text-blue-600 hover:underline">
+        ← До списку тренувань
+      </Link>
+    </div>
+  );
+}
+
+function ExerciseRoundRow({
+  attrs,
+  planned,
+  editable,
+  readonlyValues,
+  fieldPrefix,
+  getValue,
+}: {
+  attrs: AttributeType[];
+  planned: { weight: number | null; time: number | null; reps: number | null };
+  editable: boolean;
+  readonlyValues: boolean;
+  fieldPrefix: string;
+  getValue: (attr: "weight" | "time" | "reps") => string | number;
+}) {
+  const attrKeyMap = { WEIGHT: "weight", TIME: "time", REPS: "reps" } as const;
+
+  return (
+    <div className="flex flex-wrap gap-4">
+      {attrs.map((attr) => {
+        const key = attrKeyMap[attr];
+        const plannedValue = planned[key];
+        if (plannedValue == null) return null;
+        return (
+          <div key={attr} className="text-sm">
+            <div className="text-xs text-gray-500 mb-1">
+              {ATTRIBUTE_LABELS[attr]} (план: {plannedValue})
+            </div>
+            {editable ? (
+              <input
+                type="number"
+                step="any"
+                name={`${fieldPrefix}__${key}`}
+                defaultValue={getValue(key)}
+                className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm"
+              />
+            ) : (
+              <div className="w-24">{readonlyValues ? getValue(key) || "—" : "—"}</div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}

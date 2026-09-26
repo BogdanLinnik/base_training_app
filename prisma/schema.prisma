@@ -1,0 +1,203 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------- Auth.js required models ----------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+
+  accounts Account[]
+  sessions Session[]
+
+  createdExercises   Exercise[]
+  createdTrainings   Training[] @relation("TrainingCreatedBy")
+  assignedTrainings  Training[] @relation("TrainingForUser")
+  comments           Comment[]
+
+  createdAt DateTime @default(now())
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ---------- Domain models ----------
+
+enum ExerciseType {
+  SIMPLE
+  COMPLEX
+}
+
+enum AttributeType {
+  WEIGHT
+  TIME
+  REPS
+}
+
+model Exercise {
+  id             String          @id @default(cuid())
+  type           ExerciseType
+  name           String
+  details        String?         @db.Text
+  youtubeUrl     String?
+  attributeTypes AttributeType[]
+
+  createdById String
+  createdBy   User   @relation(fields: [createdById], references: [id])
+
+  // components of this exercise, when it is COMPLEX
+  components ComplexExerciseItem[] @relation("ParentExercise")
+  // complex exercises that include this exercise as a child, when it is SIMPLE
+  usedIn     ComplexExerciseItem[] @relation("ChildExercise")
+
+  trainingExercises      TrainingExercise[]
+  trainingExerciseChildValues TrainingExerciseChildValue[]
+  trainingExerciseResults    TrainingExerciseResult[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ComplexExerciseItem {
+  id               String @id @default(cuid())
+  parentExerciseId String
+  parentExercise   Exercise @relation("ParentExercise", fields: [parentExerciseId], references: [id], onDelete: Cascade)
+  childExerciseId  String
+  childExercise    Exercise @relation("ChildExercise", fields: [childExerciseId], references: [id])
+  order            Int
+
+  @@index([parentExerciseId])
+}
+
+enum TrainingStatus {
+  CREATED
+  PENDING_REVIEW
+  ACCEPTED
+  IN_PROGRESS
+  DONE
+}
+
+model Training {
+  id          String         @id @default(cuid())
+  createdById String
+  createdBy   User           @relation("TrainingCreatedBy", fields: [createdById], references: [id])
+  forUserId   String
+  forUser     User           @relation("TrainingForUser", fields: [forUserId], references: [id])
+  expectedDate DateTime
+  description String?        @db.Text
+  status      TrainingStatus @default(CREATED)
+
+  exercises TrainingExercise[]
+  comments  Comment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdById])
+  @@index([forUserId])
+}
+
+model TrainingExercise {
+  id           String   @id @default(cuid())
+  trainingId   String
+  training     Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  exerciseId   String
+  exercise     Exercise @relation(fields: [exerciseId], references: [id])
+  order        Int
+  roundsCount  Int      @default(1)
+
+  // planned values, used when exercise.type === SIMPLE
+  plannedWeight Float?
+  plannedTime   Int?
+  plannedReps   Int?
+
+  childValues TrainingExerciseChildValue[]
+  results     TrainingExerciseResult[]
+
+  @@index([trainingId])
+}
+
+model TrainingExerciseChildValue {
+  id                 String           @id @default(cuid())
+  trainingExerciseId String
+  trainingExercise   TrainingExercise @relation(fields: [trainingExerciseId], references: [id], onDelete: Cascade)
+  childExerciseId    String
+  childExercise      Exercise         @relation(fields: [childExerciseId], references: [id])
+
+  plannedWeight Float?
+  plannedTime   Int?
+  plannedReps   Int?
+
+  @@index([trainingExerciseId])
+}
+
+model TrainingExerciseResult {
+  id                 String           @id @default(cuid())
+  trainingExerciseId String
+  trainingExercise   TrainingExercise @relation(fields: [trainingExerciseId], references: [id], onDelete: Cascade)
+  roundIndex         Int
+  // null when the result belongs to a SIMPLE training exercise itself
+  childExerciseId    String?
+  childExercise      Exercise?        @relation(fields: [childExerciseId], references: [id])
+
+  actualWeight Float?
+  actualTime   Int?
+  actualReps   Int?
+
+  @@index([trainingExerciseId])
+}
+
+model Comment {
+  id         String   @id @default(cuid())
+  trainingId String
+  training   Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User     @relation(fields: [authorId], references: [id])
+  text       String   @db.Text
+  createdAt  DateTime @default(now())
+
+  @@index([trainingId])
+}
