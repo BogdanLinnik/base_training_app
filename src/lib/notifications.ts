@@ -5,13 +5,27 @@ export type NotificationType =
   | "TRAINING_CREATED_FOR_YOU"
   | "NEW_COMMENT";
 
-export const NOTIFICATION_SETTINGS_LABELS: Record<
-  "emailOnStatusChange" | "emailOnTrainingCreatedForYou" | "emailOnComment",
-  string
-> = {
+export type NotificationSettingKey =
+  | "emailOnStatusChange"
+  | "emailOnTrainingCreatedForYou"
+  | "emailOnComment";
+
+export const NOTIFICATION_SETTINGS_LABELS: Record<NotificationSettingKey, string> = {
   emailOnStatusChange: "Зміна статусу тренувань, які я створив(ла) для інших",
   emailOnTrainingCreatedForYou: "Створення тренування для мене",
   emailOnComment: "Коментарі на моїх тренуваннях",
+};
+
+export const NOTIFICATION_TYPE_TO_SETTING: Record<NotificationType, NotificationSettingKey> = {
+  TRAINING_STATUS_CHANGED: "emailOnStatusChange",
+  TRAINING_CREATED_FOR_YOU: "emailOnTrainingCreatedForYou",
+  NEW_COMMENT: "emailOnComment",
+};
+
+export const NOTIFICATION_EMAIL_SUBJECTS: Record<NotificationType, string> = {
+  TRAINING_STATUS_CHANGED: "Статус тренування змінено",
+  TRAINING_CREATED_FOR_YOU: "Нове тренування для вас",
+  NEW_COMMENT: "Новий коментар до тренування",
 };
 
 type NotificationLike = {

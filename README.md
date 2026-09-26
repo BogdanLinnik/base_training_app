@@ -49,6 +49,26 @@ npm run build    # продакшн-збірка
 4. Скопіюйте **Client ID** і **Client Secret** — вони підуть у змінні
    `AUTH_GOOGLE_ID` і `AUTH_GOOGLE_SECRET`.
 
+## Email-нотифікації
+
+Листи про сповіщення (зміна статусу, нове тренування, новий коментар)
+надсилаються через Gmail SMTP з адреси `appbasetraining@gmail.com`, якщо
+отримувач не вимкнув відповідний тип у **Налаштування**. Без налаштованого
+`GMAIL_APP_PASSWORD` застосунок просто пропускає відправку листа (лише
+попередження в логах) — внутрішні нотифікації на вкладці «Нотифікації»
+працюють незалежно від цього.
+
+1. Увімкніть 2-етапну перевірку (2-Step Verification) на акаунті
+   `appbasetraining@gmail.com` — без неї Google не дає створити пароль
+   застосунку.
+2. Відкрийте [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+   (залогінившись саме як `appbasetraining@gmail.com`), створіть пароль
+   застосунку (назва — будь-яка, наприклад "Тренування") і скопіюйте
+   16-символьний пароль.
+3. Додайте змінні:
+   - `GMAIL_USER="appbasetraining@gmail.com"`
+   - `GMAIL_APP_PASSWORD="<16-символьний пароль без пробілів>"`
+
 ## Деплой на Vercel
 
 1. Заведіть git-репозиторій цього проєкту і запуште на GitHub (Vercel
@@ -68,6 +88,7 @@ npm run build    # продакшн-збірка
    - `AUTH_SECRET` — випадковий рядок (`node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`)
    - `AUTH_URL` — `https://<ваш-домен>.vercel.app`
    - `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` — з кроку вище
+   - `GMAIL_USER`, `GMAIL_APP_PASSWORD` — див. розділ "Email-нотифікації" вище
 5. Перед першим релізом виконайте міграції проти продової БД:
    `npx prisma migrate deploy` (з локальної машини, з відповідною
    змінною з'єднання в оточенні, або через Vercel CLI / build-команду).
