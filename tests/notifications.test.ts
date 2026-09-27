@@ -31,6 +31,15 @@ describe("describeNotification", () => {
     expect(text).toBe("Тренер Олена залишив(ла) коментар: «Чудова робота!»");
   });
 
+  it("describes a viewer invite", () => {
+    const text = describeNotification({
+      type: "TRAINING_VIEWER_ADDED",
+      data: null,
+      actor,
+    });
+    expect(text).toBe("Тренер Олена запросив(ла) вас переглядати тренування");
+  });
+
   it("falls back to email when the actor has no name", () => {
     const text = describeNotification({
       type: "TRAINING_CREATED_FOR_YOU",

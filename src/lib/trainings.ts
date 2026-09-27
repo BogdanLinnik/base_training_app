@@ -28,6 +28,27 @@ type TrainingLike = {
   status: TrainingStatus;
 };
 
+type TrainingWithViewers = TrainingLike & { viewers: { userId: string }[] };
+
+/** Creator and assignee can manage the training; a viewer can only look and comment. */
+export function isViewer(training: TrainingWithViewers, userId: string): boolean {
+  return (
+    training.createdById !== userId &&
+    training.forUserId !== userId &&
+    training.viewers.some((v) => v.userId === userId)
+  );
+}
+
+/** Anyone allowed to open the training's page: creator, assignee, or an invited viewer. */
+export function canViewTraining(training: TrainingWithViewers, userId: string): boolean {
+  return training.createdById === userId || training.forUserId === userId || isViewer(training, userId);
+}
+
+/** Only the creator or the assignee may invite/remove viewers. */
+export function canManageViewers(training: TrainingLike, userId: string): boolean {
+  return training.createdById === userId || training.forUserId === userId;
+}
+
 /** Tags are derived from the relationship + status, never stored directly. */
 export function deriveTrainingTags(training: TrainingLike): TrainingTag[] {
   if (training.createdById === training.forUserId) return ["own"];

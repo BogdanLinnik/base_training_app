@@ -2,13 +2,17 @@ import { describe, expect, it } from "vitest";
 import {
   canEditTraining,
   canEnterResults,
+  canManageViewers,
   canTransition,
+  canViewTraining,
   deriveTrainingTags,
   initialStatusFor,
+  isViewer,
 } from "@/lib/trainings";
 
 const trainer = "trainer-1";
 const athlete = "athlete-1";
+const spectator = "spectator-1";
 
 describe("initialStatusFor", () => {
   it("skips confirmation for a training created for oneself", () => {
@@ -80,5 +84,33 @@ describe("canEnterResults", () => {
     expect(canEnterResults(inProgress, athlete)).toBe(true);
     expect(canEnterResults(accepted, athlete)).toBe(false);
     expect(canEnterResults(inProgress, trainer)).toBe(false);
+  });
+});
+
+describe("isViewer / canViewTraining / canManageViewers", () => {
+  const base = {
+    createdById: trainer,
+    forUserId: athlete,
+    status: "ACCEPTED" as const,
+    viewers: [{ userId: spectator }],
+  };
+
+  it("recognizes an invited viewer who is neither the creator nor the assignee", () => {
+    expect(isViewer(base, spectator)).toBe(true);
+    expect(isViewer(base, trainer)).toBe(false);
+    expect(isViewer(base, athlete)).toBe(false);
+  });
+
+  it("lets the creator, the assignee, and viewers view the training", () => {
+    expect(canViewTraining(base, trainer)).toBe(true);
+    expect(canViewTraining(base, athlete)).toBe(true);
+    expect(canViewTraining(base, spectator)).toBe(true);
+    expect(canViewTraining(base, "stranger")).toBe(false);
+  });
+
+  it("only lets the creator or the assignee manage viewers", () => {
+    expect(canManageViewers(base, trainer)).toBe(true);
+    expect(canManageViewers(base, athlete)).toBe(true);
+    expect(canManageViewers(base, spectator)).toBe(false);
   });
 });

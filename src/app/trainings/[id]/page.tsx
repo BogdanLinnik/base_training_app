@@ -4,7 +4,9 @@ import { prisma } from "@/lib/prisma";
 import {
   canEditTraining,
   canEnterResults,
+  canManageViewers,
   canTransition,
+  canViewTraining,
   deriveTrainingTags,
 } from "@/lib/trainings";
 import { buildProgressUnits, overallProgressPercent } from "@/lib/progress";
@@ -13,9 +15,11 @@ import { ProgressBadge } from "@/components/ProgressBadge";
 import { ATTRIBUTE_LABELS, type AttributeType } from "@/lib/exercises";
 import {
   addComment,
+  addViewer,
   changeTrainingStatus,
   deleteTraining,
   duplicateTraining,
+  removeViewer,
   submitTrainingResults,
 } from "@/app/actions/trainings";
 import Link from "next/link";
@@ -34,6 +38,10 @@ export default async function TrainingDetailPage({
     include: {
       createdBy: { select: { id: true, name: true, email: true } },
       forUser: { select: { id: true, name: true, email: true } },
+      viewers: {
+        orderBy: { createdAt: "asc" },
+        include: { user: { select: { id: true, name: true, email: true } } },
+      },
       comments: {
         orderBy: { createdAt: "asc" },
         include: { author: { select: { name: true, email: true } } },
@@ -50,12 +58,14 @@ export default async function TrainingDetailPage({
   });
 
   if (!training) notFound();
-  if (training.createdById !== userId && training.forUserId !== userId) notFound();
+  if (!canViewTraining(training, userId)) notFound();
 
   const tags = deriveTrainingTags(training);
   const transition = canTransition(training, userId);
   const editable = canEditTraining(training, userId);
   const resultsEditable = canEnterResults(training, userId);
+  const manageViewers = canManageViewers(training, userId);
+  const isParty = training.createdById === userId || training.forUserId === userId;
   const showProgress = training.status === "IN_PROGRESS" || training.status === "DONE";
   const percent = showProgress
     ? overallProgressPercent(buildProgressUnits(training.exercises))
@@ -80,6 +90,23 @@ export default async function TrainingDetailPage({
   const submitResultsWithId = submitTrainingResults.bind(null, training.id);
   const addCommentWithId = addComment.bind(null, training.id);
   const duplicateWithId = duplicateTraining.bind(null, training.id);
+  const addViewerWithId = addViewer.bind(null, training.id);
+
+  const availableUsers = manageViewers
+    ? await prisma.user.findMany({
+        where: {
+          id: {
+            notIn: [
+              training.createdById,
+              training.forUserId,
+              ...training.viewers.map((v) => v.userId),
+            ],
+          },
+        },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, email: true },
+      })
+    : [];
 
   return (
     <div className="space-y-8 max-w-3xl">
@@ -117,11 +144,13 @@ export default async function TrainingDetailPage({
               </button>
             </form>
           )}
-          <form action={duplicateWithId}>
-            <button type="submit" className="text-sm text-blue-600 hover:underline">
-              Дублювати
-            </button>
-          </form>
+          {isParty && (
+            <form action={duplicateWithId}>
+              <button type="submit" className="text-sm text-blue-600 hover:underline">
+                Дублювати
+              </button>
+            </form>
+          )}
           {editable && (
             <>
               <Link
@@ -144,6 +173,58 @@ export default async function TrainingDetailPage({
           )}
         </div>
       </div>
+
+      {(manageViewers || training.viewers.length > 0) && (
+        <div>
+          <h2 className="text-sm font-semibold mb-3">Глядачі</h2>
+          <ul className="space-y-2 mb-3">
+            {training.viewers.map((v) => (
+              <li
+                key={v.id}
+                className="flex items-center justify-between gap-3 rounded-md bg-white border border-gray-200 px-3 py-2 text-sm"
+              >
+                <span>{v.user.name ?? v.user.email}</span>
+                {manageViewers && (
+                  <form
+                    action={async () => {
+                      "use server";
+                      await removeViewer(training.id, v.userId);
+                    }}
+                  >
+                    <button type="submit" className="text-xs text-red-600 hover:underline">
+                      Прибрати
+                    </button>
+                  </form>
+                )}
+              </li>
+            ))}
+            {training.viewers.length === 0 && (
+              <p className="text-sm text-gray-500">Ще немає глядачів.</p>
+            )}
+          </ul>
+          {manageViewers && availableUsers.length > 0 && (
+            <form action={addViewerWithId} className="flex gap-2">
+              <select
+                name="viewerUserId"
+                required
+                className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
+              >
+                {availableUsers.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name ?? u.email}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="submit"
+                className="rounded-md bg-gray-800 text-white text-sm px-4 py-2 hover:bg-gray-700"
+              >
+                Додати
+              </button>
+            </form>
+          )}
+        </div>
+      )}
 
       <form action={submitResultsWithId} className="space-y-4">
         <h2 className="text-sm font-semibold">Вправи</h2>

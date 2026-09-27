@@ -13,6 +13,7 @@ export default async function SettingsPage() {
     "emailOnStatusChange",
     "emailOnTrainingCreatedForYou",
     "emailOnComment",
+    "emailOnAddedAsViewer",
   ] as const;
 
   return (

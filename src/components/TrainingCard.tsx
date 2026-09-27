@@ -19,12 +19,16 @@ export function TrainingCard({
   currentUserId: string;
 }) {
   const tags = deriveTrainingTags(training);
+  const isParty = training.createdById === currentUserId || training.forUserId === currentUserId;
   const otherParty =
     training.forUserId === currentUserId
       ? training.createdBy
       : training.forUser;
-  const otherPartyLabel =
-    training.createdById === training.forUserId
+  const otherPartyLabel = !isParty
+    ? `${training.createdBy.name ?? training.createdBy.email} → ${
+        training.forUser.name ?? training.forUser.email
+      }`
+    : training.createdById === training.forUserId
       ? null
       : training.forUserId === currentUserId
         ? `Від: ${otherParty.name ?? otherParty.email}`

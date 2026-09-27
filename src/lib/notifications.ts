@@ -3,17 +3,20 @@ import { STATUS_LABELS, type TrainingStatus } from "@/lib/trainings";
 export type NotificationType =
   | "TRAINING_STATUS_CHANGED"
   | "TRAINING_CREATED_FOR_YOU"
-  | "NEW_COMMENT";
+  | "NEW_COMMENT"
+  | "TRAINING_VIEWER_ADDED";
 
 export type NotificationSettingKey =
   | "emailOnStatusChange"
   | "emailOnTrainingCreatedForYou"
-  | "emailOnComment";
+  | "emailOnComment"
+  | "emailOnAddedAsViewer";
 
 export const NOTIFICATION_SETTINGS_LABELS: Record<NotificationSettingKey, string> = {
   emailOnStatusChange: "Зміна статусу тренувань, які я створив(ла) для інших",
   emailOnTrainingCreatedForYou: "Створення тренування для мене",
   emailOnComment: "Коментарі на моїх тренуваннях",
+  emailOnAddedAsViewer: "Мене додали глядачем тренування",
 };
 
 type NotificationLike = {
@@ -38,5 +41,7 @@ export function describeNotification(n: NotificationLike): string {
       const preview = (n.data as { commentPreview?: string } | null)?.commentPreview ?? "";
       return `${actorName} залишив(ла) коментар: «${preview}»`;
     }
+    case "TRAINING_VIEWER_ADDED":
+      return `${actorName} запросив(ла) вас переглядати тренування`;
   }
 }

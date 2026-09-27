@@ -58,6 +58,7 @@ export async function updateNotificationSettings(formData: FormData) {
     emailOnStatusChange: formData.get("emailOnStatusChange") === "on",
     emailOnTrainingCreatedForYou: formData.get("emailOnTrainingCreatedForYou") === "on",
     emailOnComment: formData.get("emailOnComment") === "on",
+    emailOnAddedAsViewer: formData.get("emailOnAddedAsViewer") === "on",
   };
 
   await prisma.notificationSettings.upsert({

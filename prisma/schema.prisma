@@ -29,6 +29,9 @@ model User {
   assignedTrainings  Training[] @relation("TrainingForUser")
   comments           Comment[]
 
+  viewingTrainings     TrainingViewer[] @relation("TrainingViewerUser")
+  addedTrainingViewers TrainingViewer[] @relation("TrainingViewerAddedBy")
+
   notifications       Notification[] @relation("NotificationRecipient")
   triggeredNotifications Notification[] @relation("NotificationActor")
   notificationSettings   NotificationSettings?
@@ -141,12 +144,30 @@ model Training {
   exercises     TrainingExercise[]
   comments      Comment[]
   notifications Notification[]
+  viewers       TrainingViewer[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([createdById])
   @@index([forUserId])
+}
+
+// A read-only invite: lets someone who is neither the creator nor the
+// assignee view a training and comment on it. Only the creator or the
+// assignee may add or remove viewers.
+model TrainingViewer {
+  id         String   @id @default(cuid())
+  trainingId String
+  training   Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation("TrainingViewerUser", fields: [userId], references: [id], onDelete: Cascade)
+  addedById  String
+  addedBy    User     @relation("TrainingViewerAddedBy", fields: [addedById], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@unique([trainingId, userId])
+  @@index([userId])
 }
 
 model TrainingExercise {
@@ -220,6 +241,7 @@ enum NotificationType {
   TRAINING_STATUS_CHANGED
   TRAINING_CREATED_FOR_YOU
   NEW_COMMENT
+  TRAINING_VIEWER_ADDED
 }
 
 model Notification {
@@ -248,6 +270,7 @@ model NotificationSettings {
   emailOnStatusChange           Boolean @default(true)
   emailOnTrainingCreatedForYou  Boolean @default(true)
   emailOnComment                Boolean @default(true)
+  emailOnAddedAsViewer          Boolean @default(true)
 
   updatedAt DateTime @updatedAt
 }

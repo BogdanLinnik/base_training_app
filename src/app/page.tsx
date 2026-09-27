@@ -5,7 +5,7 @@ import Link from "next/link";
 import { TrainingCard } from "@/components/TrainingCard";
 import { AddButton } from "@/components/AddButton";
 
-type Tab = "mine" | "forme" | "proposed";
+type Tab = "mine" | "forme" | "proposed" | "viewer";
 
 export default async function DashboardPage({
   searchParams,
@@ -15,14 +15,17 @@ export default async function DashboardPage({
   const session = await auth();
   const userId = session!.user.id;
   const { tab: tabParam } = await searchParams;
-  const tab: Tab = tabParam === "forme" || tabParam === "proposed" ? tabParam : "mine";
+  const tab: Tab =
+    tabParam === "forme" || tabParam === "proposed" || tabParam === "viewer" ? tabParam : "mine";
 
   const where: Prisma.TrainingWhereInput =
     tab === "mine"
       ? { createdById: userId }
       : tab === "forme"
         ? { forUserId: userId, status: { in: ["ACCEPTED", "IN_PROGRESS", "DONE"] } }
-        : { forUserId: userId, status: "PENDING_REVIEW" };
+        : tab === "proposed"
+          ? { forUserId: userId, status: "PENDING_REVIEW" }
+          : { viewers: { some: { userId } } };
 
   const trainings = await prisma.training.findMany({
     where,
@@ -37,6 +40,7 @@ export default async function DashboardPage({
     { key: "mine", label: "Мої" },
     { key: "forme", label: "Для мене" },
     { key: "proposed", label: "Запропоновані" },
+    { key: "viewer", label: "Глядач" },
   ];
 
   return (

@@ -6,6 +6,8 @@ import {
   canEnterResults,
   canTransition,
   canEditTraining,
+  canManageViewers,
+  isViewer,
   initialStatusFor,
   type TrainingStatus,
 } from "@/lib/trainings";
@@ -197,7 +199,10 @@ export async function updateTraining(trainingId: string, formData: FormData) {
 export async function changeTrainingStatus(trainingId: string, formData: FormData) {
   void formData;
   const userId = await requireUserId();
-  const training = await prisma.training.findUniqueOrThrow({ where: { id: trainingId } });
+  const training = await prisma.training.findUniqueOrThrow({
+    where: { id: trainingId },
+    include: { viewers: true },
+  });
 
   const transition = canTransition(training, userId);
   if (!transition) throw new Error("Перехід статусу неможливий");
@@ -207,15 +212,21 @@ export async function changeTrainingStatus(trainingId: string, formData: FormDat
     data: { status: transition.to },
   });
 
-  if (training.createdById !== training.forUserId) {
-    await prisma.notification.create({
-      data: {
-        userId: training.createdById,
+  const recipients = new Set<string>();
+  if (training.createdById !== userId) recipients.add(training.createdById);
+  for (const v of training.viewers) {
+    if (v.userId !== userId) recipients.add(v.userId);
+  }
+
+  if (recipients.size > 0) {
+    await prisma.notification.createMany({
+      data: Array.from(recipients).map((recipientId) => ({
+        userId: recipientId,
         actorId: userId,
-        type: "TRAINING_STATUS_CHANGED",
+        type: "TRAINING_STATUS_CHANGED" as const,
         trainingId,
         data: { status: transition.to },
-      },
+      })),
     });
   }
 
@@ -278,25 +289,80 @@ export async function addComment(trainingId: string, formData: FormData) {
   const text = String(formData.get("text") ?? "").trim();
   if (!text) return;
 
-  const training = await prisma.training.findUniqueOrThrow({ where: { id: trainingId } });
-  if (training.createdById !== userId && training.forUserId !== userId) {
+  const training = await prisma.training.findUniqueOrThrow({
+    where: { id: trainingId },
+    include: { viewers: true },
+  });
+  const allowed =
+    training.createdById === userId || training.forUserId === userId || isViewer(training, userId);
+  if (!allowed) {
     throw new Error("Немає прав коментувати це тренування");
   }
 
   await prisma.comment.create({ data: { trainingId, authorId: userId, text } });
 
-  const recipientId = training.createdById !== userId ? training.createdById : training.forUserId;
-  if (recipientId !== userId) {
-    await prisma.notification.create({
-      data: {
+  const recipients = new Set<string>();
+  if (training.createdById !== userId) recipients.add(training.createdById);
+  if (training.forUserId !== userId) recipients.add(training.forUserId);
+  for (const v of training.viewers) {
+    if (v.userId !== userId) recipients.add(v.userId);
+  }
+
+  if (recipients.size > 0) {
+    await prisma.notification.createMany({
+      data: Array.from(recipients).map((recipientId) => ({
         userId: recipientId,
         actorId: userId,
-        type: "NEW_COMMENT",
+        type: "NEW_COMMENT" as const,
         trainingId,
         data: { commentPreview: text.slice(0, 140) },
-      },
+      })),
     });
   }
+
+  revalidatePath(`/trainings/${trainingId}`);
+}
+
+/** Only the creator or the assignee may invite a viewer — someone who can look and comment but not edit. */
+export async function addViewer(trainingId: string, formData: FormData) {
+  const userId = await requireUserId();
+  const viewerUserId = String(formData.get("viewerUserId") ?? "");
+  if (!viewerUserId) throw new Error("Оберіть користувача");
+
+  const training = await prisma.training.findUniqueOrThrow({ where: { id: trainingId } });
+  if (!canManageViewers(training, userId)) {
+    throw new Error("Немає прав додавати глядачів");
+  }
+  if (viewerUserId === training.createdById || viewerUserId === training.forUserId) {
+    throw new Error("Цей користувач вже має доступ до тренування");
+  }
+
+  await prisma.trainingViewer.upsert({
+    where: { trainingId_userId: { trainingId, userId: viewerUserId } },
+    create: { trainingId, userId: viewerUserId, addedById: userId },
+    update: {},
+  });
+
+  await prisma.notification.create({
+    data: {
+      userId: viewerUserId,
+      actorId: userId,
+      type: "TRAINING_VIEWER_ADDED",
+      trainingId,
+    },
+  });
+
+  revalidatePath(`/trainings/${trainingId}`);
+}
+
+export async function removeViewer(trainingId: string, viewerUserId: string) {
+  const userId = await requireUserId();
+  const training = await prisma.training.findUniqueOrThrow({ where: { id: trainingId } });
+  if (!canManageViewers(training, userId)) {
+    throw new Error("Немає прав видаляти глядачів");
+  }
+
+  await prisma.trainingViewer.deleteMany({ where: { trainingId, userId: viewerUserId } });
 
   revalidatePath(`/trainings/${trainingId}`);
 }
