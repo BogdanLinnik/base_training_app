@@ -20,8 +20,13 @@ npm run db:seed             # створює тестових користува
 npm run dev
 ```
 
-Відкрийте http://localhost:3000 і увійдіть через Google (потрібен
-налаштований `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` — див. розділ нижче).
+Відкрийте http://localhost:3000. Оскільки `ALLOW_TEST_LOGIN=true` в
+`.env.local` за замовчуванням, на сторінці `/login` буде форма тестового
+входу — вона створює/логінить користувача по email без реального Google
+OAuth. **Ніколи не вмикайте цю змінну на проді.**
+
+Тестові облікові записи після `npm run db:seed`:
+`trainer@example.com` (тренер) та `athlete@example.com` (спортсмен).
 
 ### Корисні команди
 
@@ -34,7 +39,8 @@ npm run build    # продакшн-збірка
 
 ## Google OAuth Client ID
 
-Потрібен для входу через Gmail — і локально, і в проді.
+Потрібен для входу через Gmail у проді (і опційно локально, якщо захочете
+перевірити реальний Google-логін замість тестового).
 
 1. Відкрийте [Google Cloud Console](https://console.cloud.google.com/) →
    створіть новий проєкт (або оберіть існуючий).
@@ -76,6 +82,7 @@ npm run build    # продакшн-збірка
    - `AUTH_SECRET` — випадковий рядок (`node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`)
    - `AUTH_URL` — `https://<ваш-домен>.vercel.app`
    - `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` — з кроку вище
+   - **НЕ додавайте** `ALLOW_TEST_LOGIN` на проді (або виставте `false`).
 5. Перед першим релізом виконайте міграції проти продової БД:
    `npx prisma migrate deploy` (з локальної машини, з відповідною
    змінною з'єднання в оточенні, або через Vercel CLI / build-команду).
