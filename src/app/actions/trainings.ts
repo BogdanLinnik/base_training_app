@@ -54,8 +54,8 @@ type AttrKind = "WEIGHT" | "TIME" | "REPS";
 type AttrValuesInput = z.infer<typeof attrValuesSchema>;
 
 /**
- * Planned values for the exercise's declared attributes: empty means 0, negative
- * is rejected. Attributes the exercise doesn't have stay null.
+ * Planned values for the exercise's declared attributes: each must be filled and
+ * not negative (0 is fine). Attributes the exercise doesn't have stay null.
  */
 function normalizeAttrs(
   values: AttrValuesInput | null | undefined,
@@ -69,9 +69,9 @@ function normalizeAttrs(
   };
   for (const attr of attrTypes) {
     const key = attr === "WEIGHT" ? "weight" : attr === "TIME" ? "time" : "reps";
-    const value = values?.[key] ?? 0;
-    if (value < 0) {
-      throw new Error(`Значення атрибутів не можуть бути від'ємними (вправа «${exerciseName}»)`);
+    const value = values?.[key];
+    if (value == null || value < 0) {
+      throw new Error(`Заповніть усі значення атрибутів для вправи «${exerciseName}»`);
     }
     result[key] = value;
   }
@@ -317,10 +317,9 @@ export async function submitTrainingResults(trainingId: string, formData: FormDa
       time: null,
       reps: null,
     };
-    const num = Math.max(0, numberOrNull(value) ?? 0);
-    if (attr === "weight") existing.weight = num;
-    if (attr === "time") existing.time = num;
-    if (attr === "reps") existing.reps = num;
+    if (attr === "weight") existing.weight = numberOrNull(value);
+    if (attr === "time") existing.time = numberOrNull(value);
+    if (attr === "reps") existing.reps = numberOrNull(value);
     results.set(mapKey, existing);
   }
 

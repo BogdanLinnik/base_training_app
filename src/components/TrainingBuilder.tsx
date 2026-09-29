@@ -58,7 +58,7 @@ export type TrainingBuilderDefaultValues = {
   }[];
 };
 
-const EMPTY_ATTRS: AttrValues = { weight: null, time: null, reps: null };
+const EMPTY_ATTRS: AttrValues = { weight: 0, time: 0, reps: 0 };
 
 function makeUid() {
   return typeof crypto !== "undefined" && crypto.randomUUID
@@ -285,7 +285,7 @@ export function TrainingBuilder({
         return attrsToCheck.some((values, idx) =>
           declaredAttrs[idx].some((attr) => {
             const value = values[attr.toLowerCase() as keyof AttrValues];
-            return value != null && value < 0;
+            return value == null || value < 0;
           })
         );
       });
@@ -293,7 +293,7 @@ export function TrainingBuilder({
       if (invalid) {
         e.preventDefault();
         setSelected((prev) => prev.map((sel, si) => (si === i ? { ...sel, expanded: true } : sel)));
-        setError(`Значення атрибутів не можуть бути від'ємними (вправа «${exercise.name}»)`);
+        setError(`Заповніть усі значення атрибутів для вправи «${exercise.name}»`);
         return;
       }
     }
@@ -315,12 +315,13 @@ export function TrainingBuilder({
           return (
             <div key={attr}>
               <label className="block text-xs text-gray-600 mb-1">
-                {ATTRIBUTE_LABELS[attr]}
+                {ATTRIBUTE_LABELS[attr]} <span className="text-red-600">*</span>
               </label>
               <input
                 type="number"
                 step="any"
                 min={0}
+                required
                 value={vals.planned[key] ?? ""}
                 onChange={(e) => updatePlanned(index, round, key, e.target.value)}
                 className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm"
@@ -341,12 +342,13 @@ export function TrainingBuilder({
                 return (
                   <div key={attr}>
                     <label className="block text-xs text-gray-600 mb-1">
-                      {ATTRIBUTE_LABELS[attr]}
+                      {ATTRIBUTE_LABELS[attr]} <span className="text-red-600">*</span>
                     </label>
                     <input
                       type="number"
                       step="any"
                       min={0}
+                      required
                       value={childVal[key] ?? ""}
                       onChange={(e) =>
                         updateChildValue(index, round, c.childExerciseId, key, e.target.value)
