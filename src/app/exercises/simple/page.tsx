@@ -52,6 +52,11 @@ export default async function SimpleExercisesPage() {
                       {ATTRIBUTE_LABELS[attr]}
                     </span>
                   ))}
+                  {exercise.bilateral && (
+                    <span className="text-xs rounded-full bg-gray-100 px-2 py-0.5 text-gray-600">
+                      Ліва / права
+                    </span>
+                  )}
                 </div>
                 {exercise.youtubeUrl && (
                   <div className="mt-2">

@@ -9,7 +9,13 @@ import {
   canViewTraining,
   deriveTrainingTags,
 } from "@/lib/trainings";
-import { buildProgressUnits, overallProgressPercent, plannedForRound } from "@/lib/progress";
+import {
+  buildProgressUnits,
+  overallProgressPercent,
+  plannedForRound,
+  SIDES,
+  type Side,
+} from "@/lib/progress";
 import { StatusBadge, TagBadge } from "@/components/StatusBadge";
 import { ProgressBadge } from "@/components/ProgressBadge";
 import { ATTRIBUTE_LABELS, type AttributeType } from "@/lib/exercises";
@@ -77,11 +83,14 @@ export default async function TrainingDetailPage({
     teId: string,
     round: number,
     childId: string | null,
+    side: Side | null,
     attr: "weight" | "time" | "reps"
   ) => {
     const row = training.exercises
       .find((te) => te.id === teId)
-      ?.results.find((r) => r.roundIndex === round && r.childExerciseId === childId);
+      ?.results.find(
+        (r) => r.roundIndex === round && r.childExerciseId === childId && r.side === side
+      );
     if (!row) return "";
     const value =
       attr === "weight" ? row.actualWeight : attr === "time" ? row.actualTime : row.actualReps;
@@ -255,13 +264,14 @@ export default async function TrainingDetailPage({
                         Коло {round + 1}
                       </div>
                     )}
-                    <ExerciseRoundRow
+                    <SidedRoundRows
+                      bilateral={te.exercise.bilateral}
                       attrs={te.exercise.attributeTypes as AttributeType[]}
                       planned={plannedForRound(te, round, null)}
                       editable={resultsEditable}
                       readonlyValues={!resultsEditable && training.status === "DONE"}
                       fieldPrefix={`res__${te.id}__${round}__self`}
-                      getValue={(attr) => resultValue(te.id, round, null, attr)}
+                      getValue={(side, attr) => resultValue(te.id, round, null, side, attr)}
                     />
                   </div>
                 ))}
@@ -277,13 +287,16 @@ export default async function TrainingDetailPage({
                       {te.childValues.map((cv) => (
                         <div key={cv.id}>
                           <div className="text-sm mb-1">{cv.childExercise.name}</div>
-                          <ExerciseRoundRow
+                          <SidedRoundRows
+                            bilateral={cv.childExercise.bilateral}
                             attrs={cv.childExercise.attributeTypes as AttributeType[]}
                             planned={plannedForRound(te, round, cv.childExerciseId)}
                             editable={resultsEditable}
                             readonlyValues={!resultsEditable && training.status === "DONE"}
                             fieldPrefix={`res__${te.id}__${round}__${cv.childExerciseId}`}
-                            getValue={(attr) => resultValue(te.id, round, cv.childExerciseId, attr)}
+                            getValue={(side, attr) =>
+                              resultValue(te.id, round, cv.childExerciseId, side, attr)
+                            }
                           />
                         </div>
                       ))}
@@ -339,6 +352,44 @@ export default async function TrainingDetailPage({
       <Link href="/" className="text-sm text-blue-600 hover:underline">
         ← До списку тренувань
       </Link>
+    </div>
+  );
+}
+
+const SIDE_LABELS: Record<Side, string> = { LEFT: "Ліва", RIGHT: "Права" };
+
+/** One row of inputs per side for a bilateral exercise, otherwise a single row. */
+function SidedRoundRows({
+  bilateral,
+  fieldPrefix,
+  getValue,
+  ...rest
+}: {
+  bilateral: boolean;
+  attrs: AttributeType[];
+  planned: { weight: number | null; time: number | null; reps: number | null };
+  editable: boolean;
+  readonlyValues: boolean;
+  fieldPrefix: string;
+  getValue: (side: Side | null, attr: "weight" | "time" | "reps") => string | number;
+}) {
+  if (!bilateral) {
+    return (
+      <ExerciseRoundRow {...rest} fieldPrefix={fieldPrefix} getValue={(attr) => getValue(null, attr)} />
+    );
+  }
+  return (
+    <div className="space-y-2">
+      {SIDES.map((side) => (
+        <div key={side} className="flex flex-wrap items-end gap-3">
+          <div className="w-14 text-xs font-medium text-gray-500 pb-1.5">{SIDE_LABELS[side]}</div>
+          <ExerciseRoundRow
+            {...rest}
+            fieldPrefix={`${fieldPrefix}__${side.toLowerCase()}`}
+            getValue={(attr) => getValue(side, attr)}
+          />
+        </div>
+      ))}
     </div>
   );
 }

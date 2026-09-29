@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildProgressUnits,
   overallProgressPercent,
   plannedForRound,
   progressColor,
@@ -96,5 +97,35 @@ describe("plannedForRound", () => {
     const te = { ...base, perRound: true, roundValues };
     expect(plannedForRound(te, 1, null)).toEqual({ weight: 12, time: null, reps: 6 });
     expect(plannedForRound(te, 1, "c1").weight).toBe(25);
+  });
+});
+
+describe("buildProgressUnits with bilateral exercises", () => {
+  const te = (results: { side: "LEFT" | "RIGHT" | null; actualReps: number }[]) => ({
+    roundsCount: 1,
+    plannedWeight: null,
+    plannedTime: null,
+    plannedReps: 10,
+    exercise: { type: "SIMPLE" as const, bilateral: true },
+    childValues: [],
+    results: results.map((r) => ({
+      roundIndex: 0,
+      childExerciseId: null,
+      actualWeight: null,
+      actualTime: null,
+      ...r,
+    })),
+  });
+
+  it("makes one unit per side within the same round", () => {
+    const units = buildProgressUnits([te([{ side: "LEFT", actualReps: 10 }])]);
+    expect(units).toHaveLength(2);
+    expect(units[0].actual?.reps).toBe(10);
+    expect(units[1].actual).toBeNull();
+  });
+
+  it("counts a missing side as not performed", () => {
+    const units = buildProgressUnits([te([{ side: "LEFT", actualReps: 10 }])]);
+    expect(overallProgressPercent(units)).toBeCloseTo(50);
   });
 });

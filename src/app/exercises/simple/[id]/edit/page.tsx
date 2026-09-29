@@ -37,6 +37,7 @@ export default async function EditSimpleExercisePage({
           details: exercise.details,
           youtubeUrl: exercise.youtubeUrl,
           attributeTypes: exercise.attributeTypes as AttributeType[],
+          bilateral: exercise.bilateral,
         }}
       />
       {isExerciseAuthor(exercise, userId) && (

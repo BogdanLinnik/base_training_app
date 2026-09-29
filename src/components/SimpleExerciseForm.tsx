@@ -16,6 +16,7 @@ export function SimpleExerciseForm({
     details: string | null;
     youtubeUrl: string | null;
     attributeTypes: AttributeType[];
+    bilateral: boolean;
   };
   otherExerciseNames: string[];
   submitLabel: string;
@@ -102,6 +103,10 @@ export function SimpleExerciseForm({
           ))}
         </div>
       </div>
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" name="bilateral" defaultChecked={defaultValues?.bilateral} />
+        Виконується окремо на ліву та праву сторону
+      </label>
       <SubmitButton
        
         className="rounded-md bg-blue-600 text-white text-sm px-4 py-2 hover:bg-blue-700"

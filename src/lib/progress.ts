@@ -56,9 +56,13 @@ export const PROGRESS_COLOR_CLASSES: Record<ProgressColor, string> = {
   blue: "bg-blue-100 text-blue-800 border-blue-300",
 };
 
+export type Side = "LEFT" | "RIGHT";
+export const SIDES: Side[] = ["LEFT", "RIGHT"];
+
 type ResultRow = {
   roundIndex: number;
   childExerciseId: string | null;
+  side?: Side | null;
   actualWeight: number | null;
   actualTime: number | null;
   actualReps: number | null;
@@ -66,6 +70,7 @@ type ResultRow = {
 
 type ChildValueRow = {
   childExerciseId: string | null;
+  childExercise?: { bilateral: boolean };
   plannedWeight: number | null;
   plannedTime: number | null;
   plannedReps: number | null;
@@ -80,7 +85,7 @@ type TrainingExerciseRow = {
   plannedWeight: number | null;
   plannedTime: number | null;
   plannedReps: number | null;
-  exercise: { type: "SIMPLE" | "COMPLEX" };
+  exercise: { type: "SIMPLE" | "COMPLEX"; bilateral?: boolean };
   childValues: ChildValueRow[];
   results: ResultRow[];
 };
@@ -123,25 +128,30 @@ export function buildProgressUnits(trainingExercises: TrainingExerciseRow[]): Pr
 
   for (const te of trainingExercises) {
     for (let round = 0; round < te.roundsCount; round++) {
-      if (te.exercise.type === "SIMPLE") {
-        const result = te.results.find((r) => r.roundIndex === round && r.childExerciseId == null);
-        units.push({
-          planned: plannedForRound(te, round, null),
-          actual: result
-            ? { weight: result.actualWeight, time: result.actualTime, reps: result.actualReps }
-            : null,
-        });
-      } else {
-        for (const child of te.childValues) {
+      // a bilateral exercise counts once per side, both planned the same
+      const push = (childExerciseId: string | null, bilateral: boolean) => {
+        const planned = plannedForRound(te, round, childExerciseId);
+        for (const side of bilateral ? SIDES : [null]) {
           const result = te.results.find(
-            (r) => r.roundIndex === round && r.childExerciseId === child.childExerciseId
+            (r) =>
+              r.roundIndex === round &&
+              r.childExerciseId === childExerciseId &&
+              (r.side ?? null) === side
           );
           units.push({
-            planned: plannedForRound(te, round, child.childExerciseId),
+            planned,
             actual: result
               ? { weight: result.actualWeight, time: result.actualTime, reps: result.actualReps }
               : null,
           });
+        }
+      };
+
+      if (te.exercise.type === "SIMPLE") {
+        push(null, te.exercise.bilateral ?? false);
+      } else {
+        for (const child of te.childValues) {
+          push(child.childExerciseId, child.childExercise?.bilateral ?? false);
         }
       }
     }

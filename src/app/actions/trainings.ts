@@ -299,20 +299,32 @@ export async function submitTrainingResults(trainingId: string, formData: FormDa
   const training = await prisma.training.findUniqueOrThrow({ where: { id: trainingId } });
   if (!canEnterResults(training, userId)) throw new Error("Немає прав вносити результати");
 
-  type ResultKey = { trainingExerciseId: string; round: number; childExerciseId: string | null };
+  type ResultKey = {
+    trainingExerciseId: string;
+    round: number;
+    childExerciseId: string | null;
+    side: "LEFT" | "RIGHT" | null;
+  };
   const results = new Map<string, ResultKey & { weight: number | null; time: number | null; reps: number | null }>();
 
   for (const [key, value] of formData.entries()) {
     if (!key.startsWith("res__")) continue;
-    const [, trainingExerciseId, roundRaw, childRaw, attr] = key.split("__");
+    // res__<trainingExerciseId>__<round>__<child|self>__<attr> or, for a
+    // bilateral exercise, res__<trainingExerciseId>__<round>__<child|self>__<left|right>__<attr>
+    const parts = key.split("__");
+    const [, trainingExerciseId, roundRaw, childRaw] = parts;
+    const attr = parts[parts.length - 1];
+    const sideRaw = parts.length === 6 ? parts[4] : null;
+    const side = sideRaw === "left" ? "LEFT" : sideRaw === "right" ? "RIGHT" : null;
     const round = Number(roundRaw);
     const childExerciseId = childRaw === "self" ? null : childRaw;
-    const mapKey = `${trainingExerciseId}__${round}__${childRaw}`;
+    const mapKey = `${trainingExerciseId}__${round}__${childRaw}__${side}`;
 
     const existing = results.get(mapKey) ?? {
       trainingExerciseId,
       round,
       childExerciseId,
+      side,
       weight: null,
       time: null,
       reps: null,
@@ -333,6 +345,7 @@ export async function submitTrainingResults(trainingId: string, formData: FormDa
           trainingExerciseId: r.trainingExerciseId,
           roundIndex: r.round,
           childExerciseId: r.childExerciseId,
+          side: r.side,
           actualWeight: r.weight,
           actualTime: r.time,
           actualReps: r.reps,

@@ -47,6 +47,7 @@ export async function createSimpleExercise(formData: FormData) {
       details: details || null,
       youtubeUrl: youtubeUrl || null,
       attributeTypes,
+      bilateral: formData.get("bilateral") === "on",
       createdById: userId,
     },
   });
@@ -78,6 +79,7 @@ export async function updateSimpleExercise(exerciseId: string, formData: FormDat
       details: details || null,
       youtubeUrl: youtubeUrl || null,
       attributeTypes,
+      bilateral: formData.get("bilateral") === "on",
     },
   });
 

@@ -84,6 +84,11 @@ enum ExerciseType {
   COMPLEX
 }
 
+enum ExerciseSide {
+  LEFT
+  RIGHT
+}
+
 enum AttributeType {
   WEIGHT
   TIME
@@ -97,6 +102,9 @@ model Exercise {
   details        String?         @db.Text
   youtubeUrl     String?
   attributeTypes AttributeType[]
+  // performed separately on the left and right side (e.g. one leg at a time);
+  // results are then entered per side, both belonging to the same round
+  bilateral      Boolean         @default(false)
 
   createdById String
   createdBy   User   @relation(fields: [createdById], references: [id])
@@ -258,6 +266,8 @@ model TrainingExerciseResult {
   // null when the result belongs to a SIMPLE training exercise itself
   childExerciseId    String?
   childExercise      Exercise?        @relation(fields: [childExerciseId], references: [id])
+  // null unless the exercise is bilateral
+  side               ExerciseSide?
 
   actualWeight Float?
   actualTime   Int?
