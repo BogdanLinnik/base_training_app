@@ -35,7 +35,7 @@ export function NavBar({
   ) : null;
 
   return (
-    <header className="border-b border-gray-200 bg-white">
+    <header className="sticky top-0 z-40 border-b border-gray-200 bg-white">
       {/* Three columns keep the logo centered whatever the side columns contain */}
       <div className="max-w-5xl mx-auto px-4 py-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4">
         {/* Mobile: menu button */}
