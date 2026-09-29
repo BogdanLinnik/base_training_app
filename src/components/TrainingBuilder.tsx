@@ -285,7 +285,7 @@ export function TrainingBuilder({
         return attrsToCheck.some((values, idx) =>
           declaredAttrs[idx].some((attr) => {
             const value = values[attr.toLowerCase() as keyof AttrValues];
-            return value == null || value < 1;
+            return value != null && value < 0;
           })
         );
       });
@@ -293,7 +293,7 @@ export function TrainingBuilder({
       if (invalid) {
         e.preventDefault();
         setSelected((prev) => prev.map((sel, si) => (si === i ? { ...sel, expanded: true } : sel)));
-        setError(`Заповніть усі значення атрибутів для вправи «${exercise.name}»`);
+        setError(`Значення атрибутів не можуть бути від'ємними (вправа «${exercise.name}»)`);
         return;
       }
     }
@@ -315,13 +315,12 @@ export function TrainingBuilder({
           return (
             <div key={attr}>
               <label className="block text-xs text-gray-600 mb-1">
-                {ATTRIBUTE_LABELS[attr]} <span className="text-red-600">*</span>
+                {ATTRIBUTE_LABELS[attr]}
               </label>
               <input
                 type="number"
                 step="any"
-                min={1}
-                required
+                min={0}
                 value={vals.planned[key] ?? ""}
                 onChange={(e) => updatePlanned(index, round, key, e.target.value)}
                 className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm"
@@ -342,13 +341,12 @@ export function TrainingBuilder({
                 return (
                   <div key={attr}>
                     <label className="block text-xs text-gray-600 mb-1">
-                      {ATTRIBUTE_LABELS[attr]} <span className="text-red-600">*</span>
+                      {ATTRIBUTE_LABELS[attr]}
                     </label>
                     <input
                       type="number"
                       step="any"
-                      min={1}
-                      required
+                      min={0}
                       value={childVal[key] ?? ""}
                       onChange={(e) =>
                         updateChildValue(index, round, c.childExerciseId, key, e.target.value)

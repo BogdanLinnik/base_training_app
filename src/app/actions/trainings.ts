@@ -53,18 +53,29 @@ const exercisesPayloadSchema = z.array(
 type AttrKind = "WEIGHT" | "TIME" | "REPS";
 type AttrValuesInput = z.infer<typeof attrValuesSchema>;
 
-function assertAttrsFilled(
+/**
+ * Planned values for the exercise's declared attributes: empty means 0, negative
+ * is rejected. Attributes the exercise doesn't have stay null.
+ */
+function normalizeAttrs(
   values: AttrValuesInput | null | undefined,
   attrTypes: AttrKind[],
   exerciseName: string
 ) {
+  const result: { weight: number | null; time: number | null; reps: number | null } = {
+    weight: null,
+    time: null,
+    reps: null,
+  };
   for (const attr of attrTypes) {
     const key = attr === "WEIGHT" ? "weight" : attr === "TIME" ? "time" : "reps";
-    const value = values?.[key];
-    if (value == null || value < 1) {
-      throw new Error(`Заповніть усі значення атрибутів для вправи «${exerciseName}»`);
+    const value = values?.[key] ?? 0;
+    if (value < 0) {
+      throw new Error(`Значення атрибутів не можуть бути від'ємними (вправа «${exerciseName}»)`);
     }
+    result[key] = value;
   }
+  return result;
 }
 
 /** Parses and validates the `exercisesJson` hidden field produced by TrainingBuilder. */
@@ -107,43 +118,39 @@ async function buildTrainingExercisesData(formData: FormData) {
 
     if (exercise.type === "SIMPLE") {
       const attrTypes = exercise.attributeTypes as AttrKind[];
-      if (perRound) {
-        for (const r of rounds) assertAttrsFilled(r.planned, attrTypes, exercise.name);
-      } else {
-        assertAttrsFilled(item.planned, attrTypes, exercise.name);
-      }
-      const base = perRound ? rounds[0].planned : item.planned;
+      const roundPlanned = rounds.map((r) => normalizeAttrs(r.planned, attrTypes, exercise.name));
+      const base = perRound ? roundPlanned[0] : normalizeAttrs(item.planned, attrTypes, exercise.name);
       return {
         exerciseId: item.exerciseId,
         order,
         roundsCount,
         comment: item.comment?.trim() || null,
-        plannedWeight: base?.weight ?? null,
-        plannedTime: base?.time ?? null,
-        plannedReps: base?.reps ?? null,
+        plannedWeight: base.weight,
+        plannedTime: base.time,
+        plannedReps: base.reps,
         perRound,
         roundValues: {
-          create: rounds.map((r, roundIndex) => ({
+          create: roundPlanned.map((v, roundIndex) => ({
             roundIndex,
-            plannedWeight: r.planned?.weight ?? null,
-            plannedTime: r.planned?.time ?? null,
-            plannedReps: r.planned?.reps ?? null,
+            plannedWeight: v.weight,
+            plannedTime: v.time,
+            plannedReps: v.reps,
           })),
         },
       };
     }
 
-    for (const c of exercise.components) {
-      const childAttrTypes = c.childExercise.attributeTypes as AttrKind[];
-      if (perRound) {
-        for (const r of rounds) {
-          assertAttrsFilled(r.childValues?.[c.childExerciseId], childAttrTypes, exercise.name);
-        }
-      } else {
-        assertAttrsFilled(item.childValues?.[c.childExerciseId], childAttrTypes, exercise.name);
-      }
-    }
-    const baseChildValues = perRound ? rounds[0].childValues : item.childValues;
+    const normalizeChildren = (childValues: Record<string, AttrValuesInput> | undefined) =>
+      exercise.components.map((c) => ({
+        childExerciseId: c.childExerciseId,
+        values: normalizeAttrs(
+          childValues?.[c.childExerciseId],
+          c.childExercise.attributeTypes as AttrKind[],
+          exercise.name
+        ),
+      }));
+    const baseChildren = normalizeChildren(perRound ? rounds[0].childValues : item.childValues);
+    const roundChildren = rounds.map((r) => normalizeChildren(r.childValues));
     return {
       exerciseId: item.exerciseId,
       order,
@@ -151,21 +158,21 @@ async function buildTrainingExercisesData(formData: FormData) {
       comment: item.comment?.trim() || null,
       perRound,
       childValues: {
-        create: exercise.components.map((c) => ({
+        create: baseChildren.map((c) => ({
           childExerciseId: c.childExerciseId,
-          plannedWeight: baseChildValues?.[c.childExerciseId]?.weight ?? null,
-          plannedTime: baseChildValues?.[c.childExerciseId]?.time ?? null,
-          plannedReps: baseChildValues?.[c.childExerciseId]?.reps ?? null,
+          plannedWeight: c.values.weight,
+          plannedTime: c.values.time,
+          plannedReps: c.values.reps,
         })),
       },
       roundValues: {
-        create: rounds.flatMap((r, roundIndex) =>
-          exercise.components.map((c) => ({
+        create: roundChildren.flatMap((children, roundIndex) =>
+          children.map((c) => ({
             roundIndex,
             childExerciseId: c.childExerciseId,
-            plannedWeight: r.childValues?.[c.childExerciseId]?.weight ?? null,
-            plannedTime: r.childValues?.[c.childExerciseId]?.time ?? null,
-            plannedReps: r.childValues?.[c.childExerciseId]?.reps ?? null,
+            plannedWeight: c.values.weight,
+            plannedTime: c.values.time,
+            plannedReps: c.values.reps,
           }))
         ),
       },
@@ -310,9 +317,10 @@ export async function submitTrainingResults(trainingId: string, formData: FormDa
       time: null,
       reps: null,
     };
-    if (attr === "weight") existing.weight = numberOrNull(value);
-    if (attr === "time") existing.time = numberOrNull(value);
-    if (attr === "reps") existing.reps = numberOrNull(value);
+    const num = Math.max(0, numberOrNull(value) ?? 0);
+    if (attr === "weight") existing.weight = num;
+    if (attr === "time") existing.time = num;
+    if (attr === "reps") existing.reps = num;
     results.set(mapKey, existing);
   }
 

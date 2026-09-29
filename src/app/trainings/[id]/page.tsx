@@ -375,7 +375,7 @@ function ExerciseRoundRow({
               <input
                 type="number"
                 step="any"
-                min={1}
+                min={0}
                 name={`${fieldPrefix}__${key}`}
                 defaultValue={getValue(key)}
                 className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm"
