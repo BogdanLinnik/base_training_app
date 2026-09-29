@@ -10,7 +10,8 @@ const ATTR_KEY_MAP = { WEIGHT: "weight", TIME: "time", REPS: "reps" } as const;
 
 /**
  * Planned vs. actual values of one round (or one side of a round). While
- * editable, "виконано за планом" locks the inputs to the planned values.
+ * editable, checking "виконано за планом" fills in the planned values and
+ * locks the inputs; unchecking unlocks them and keeps whatever is there.
  */
 export function ExerciseRoundRow({
   attrs,
@@ -42,7 +43,7 @@ export function ExerciseRoundRow({
   return (
     <div className="flex flex-wrap items-end gap-4">
       {shown.map(({ attr, key }) => {
-        const value = asPlanned ? String(planned[key]) : String(typed[key]);
+        const value = String(typed[key]);
         return (
           <div key={attr} className="text-sm">
             <div className="text-xs text-gray-500 mb-1">
@@ -76,7 +77,17 @@ export function ExerciseRoundRow({
           <input
             type="checkbox"
             checked={asPlanned}
-            onChange={(e) => setAsPlanned(e.target.checked)}
+            onChange={(e) => {
+              setAsPlanned(e.target.checked);
+              // checking fills in the plan; unchecking leaves the values as they are
+              if (e.target.checked) {
+                setTyped((prev) => {
+                  const next = { ...prev };
+                  for (const { key } of shown) next[key] = String(planned[key]);
+                  return next;
+                });
+              }
+            }}
           />
           Виконано за планом
         </label>
