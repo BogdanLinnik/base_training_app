@@ -246,7 +246,6 @@ export default async function TrainingDetailPage({
           // Native <details>: collapsed inputs stay in the DOM, so they are still submitted.
           <details
             key={te.id}
-            open
             className="group rounded-lg border border-gray-200 bg-white p-4"
           >
             <summary className="flex items-center gap-2 cursor-pointer select-none text-sm font-medium list-none [&::-webkit-details-marker]:hidden mb-0 group-open:mb-3">

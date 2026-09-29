@@ -98,7 +98,7 @@ export function TrainingBuilder({
       ),
       perRound: e.perRound,
       roundValues: e.perRound ? e.roundValues : [],
-      expanded: true,
+      expanded: false,
     }))
   );
   const [dragIndex, setDragIndex] = useState<number | null>(null);
