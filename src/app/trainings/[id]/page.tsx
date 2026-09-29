@@ -243,14 +243,23 @@ export default async function TrainingDetailPage({
       <form action={submitResultsWithId} className="space-y-4">
         <h2 className="text-sm font-semibold">Вправи</h2>
         {training.exercises.map((te) => (
-          <fieldset key={te.id} className="rounded-lg border border-gray-200 bg-white p-4">
-            <legend className="px-1 text-sm font-medium">
-              {te.exercise.name}{" "}
-              <span className="text-xs text-gray-500">
-                ({te.exercise.type === "SIMPLE" ? "проста" : "комплексна"}, к-сть кіл:{" "}
-                {te.roundsCount})
+          // Native <details>: collapsed inputs stay in the DOM, so they are still submitted.
+          <details
+            key={te.id}
+            open
+            className="group rounded-lg border border-gray-200 bg-white p-4"
+          >
+            <summary className="flex items-center gap-2 cursor-pointer select-none text-sm font-medium list-none [&::-webkit-details-marker]:hidden mb-0 group-open:mb-3">
+              <span className="text-xs text-gray-400 group-open:hidden">▸</span>
+              <span className="text-xs text-gray-400 hidden group-open:inline">▾</span>
+              <span>
+                {te.exercise.name}{" "}
+                <span className="text-xs text-gray-500 font-normal">
+                  ({te.exercise.type === "SIMPLE" ? "проста" : "комплексна"}, к-сть кіл:{" "}
+                  {te.roundsCount})
+                </span>
               </span>
-            </legend>
+            </summary>
 
             {te.comment && (
               <p className="text-sm text-gray-600 bg-gray-50 border border-gray-100 rounded-md px-3 py-2 mb-3">
@@ -308,7 +317,7 @@ export default async function TrainingDetailPage({
                 ))}
               </div>
             )}
-          </fieldset>
+          </details>
         ))}
         {resultsEditable && (
           <SubmitButton
