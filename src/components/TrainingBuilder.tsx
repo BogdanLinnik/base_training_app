@@ -23,6 +23,8 @@ export type BuilderExercise = {
 
 type AttrValues = { weight: number | null; time: number | null; reps: number | null };
 
+type RoundVals = { planned: AttrValues; childValues: Record<string, AttrValues> };
+
 type SelectedExercise = {
   uid: string;
   exerciseId: string;
@@ -30,6 +32,9 @@ type SelectedExercise = {
   comment: string;
   planned: AttrValues;
   childValues: Record<string, AttrValues>;
+  // when set, each round has its own values in roundValues (planned/childValues then go unused)
+  perRound: boolean;
+  roundValues: RoundVals[];
   expanded: boolean;
 };
 
@@ -48,6 +53,8 @@ export type TrainingBuilderDefaultValues = {
       string,
       { plannedWeight: number | null; plannedTime: number | null; plannedReps: number | null }
     >;
+    perRound: boolean;
+    roundValues: RoundVals[];
   }[];
 };
 
@@ -89,6 +96,8 @@ export function TrainingBuilder({
           { weight: v.plannedWeight, time: v.plannedTime, reps: v.plannedReps },
         ])
       ),
+      perRound: e.perRound,
+      roundValues: e.perRound ? e.roundValues : [],
       expanded: true,
     }))
   );
@@ -111,6 +120,8 @@ export function TrainingBuilder({
         childValues: Object.fromEntries(
           exercise.components.map((c) => [c.childExerciseId, { ...EMPTY_ATTRS }])
         ),
+        perRound: false,
+        roundValues: [],
         expanded: true,
       },
     ]);
@@ -126,11 +137,60 @@ export function TrainingBuilder({
     );
   }
 
-  function updatePlanned(index: number, key: keyof AttrValues, value: string) {
-    const num = value === "" ? null : Number(value);
+  /** Values shown for a round; rounds that were never edited fall back to the shared values. */
+  function valuesFor(s: SelectedExercise, round: number | null): RoundVals {
+    if (round == null) return { planned: s.planned, childValues: s.childValues };
+    return s.roundValues[round] ?? { planned: s.planned, childValues: s.childValues };
+  }
+
+  function editValues(index: number, round: number | null, edit: (v: RoundVals) => RoundVals) {
     setSelected((prev) =>
-      prev.map((s, i) => (i === index ? { ...s, planned: { ...s.planned, [key]: num } } : s))
+      prev.map((s, i) => {
+        if (i !== index) return s;
+        if (round == null) {
+          const next = edit({ planned: s.planned, childValues: s.childValues });
+          return { ...s, planned: next.planned, childValues: next.childValues };
+        }
+        const roundValues = Array.from({ length: Math.max(s.roundsCount, s.roundValues.length) }, (_, r) =>
+          valuesFor(s, r)
+        );
+        roundValues[round] = edit(roundValues[round]);
+        return { ...s, roundValues };
+      })
     );
+  }
+
+  function togglePerRound(index: number, checked: boolean) {
+    setSelected((prev) =>
+      prev.map((s, i) => {
+        if (i !== index) return s;
+        if (checked) {
+          return {
+            ...s,
+            perRound: true,
+            roundValues: Array.from({ length: s.roundsCount }, () => ({
+              planned: { ...s.planned },
+              childValues: Object.fromEntries(
+                Object.entries(s.childValues).map(([id, v]) => [id, { ...v }])
+              ),
+            })),
+          };
+        }
+        const first = s.roundValues[0];
+        return {
+          ...s,
+          perRound: false,
+          roundValues: [],
+          planned: first?.planned ?? s.planned,
+          childValues: first?.childValues ?? s.childValues,
+        };
+      })
+    );
+  }
+
+  function updatePlanned(index: number, round: number | null, key: keyof AttrValues, value: string) {
+    const num = value === "" ? null : Number(value);
+    editValues(index, round, (v) => ({ ...v, planned: { ...v.planned, [key]: num } }));
   }
 
   function updateComment(index: number, value: string) {
@@ -142,21 +202,21 @@ export function TrainingBuilder({
     setSelected((prev) => prev.map((s, i) => (i === index ? { ...s, roundsCount: num } : s)));
   }
 
-  function updateChildValue(index: number, childId: string, key: keyof AttrValues, value: string) {
+  function updateChildValue(
+    index: number,
+    round: number | null,
+    childId: string,
+    key: keyof AttrValues,
+    value: string
+  ) {
     const num = value === "" ? null : Number(value);
-    setSelected((prev) =>
-      prev.map((s, i) =>
-        i === index
-          ? {
-              ...s,
-              childValues: {
-                ...s.childValues,
-                [childId]: { ...(s.childValues[childId] ?? EMPTY_ATTRS), [key]: num },
-              },
-            }
-          : s
-      )
-    );
+    editValues(index, round, (v) => ({
+      ...v,
+      childValues: {
+        ...v.childValues,
+        [childId]: { ...(v.childValues[childId] ?? EMPTY_ATTRS), [key]: num },
+      },
+    }));
   }
 
   function reorder(from: number, to: number) {
@@ -175,6 +235,10 @@ export function TrainingBuilder({
     comment: s.comment,
     planned: s.planned,
     childValues: s.childValues,
+    perRound: s.perRound,
+    roundValues: s.perRound
+      ? Array.from({ length: s.roundsCount }, (_, r) => valuesFor(s, r))
+      : undefined,
   }));
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -204,21 +268,27 @@ export function TrainingBuilder({
         return;
       }
 
-      const attrsToCheck: AttrValues[] =
-        exercise.type === "SIMPLE"
-          ? [s.planned]
-          : exercise.components.map((c) => s.childValues[c.childExerciseId] ?? EMPTY_ATTRS);
+      const rounds: (number | null)[] = s.perRound
+        ? Array.from({ length: s.roundsCount }, (_, r) => r)
+        : [null];
       const declaredAttrs: AttributeType[][] =
         exercise.type === "SIMPLE"
           ? [exercise.attributeTypes]
           : exercise.components.map((c) => c.childExercise.attributeTypes);
 
-      const invalid = attrsToCheck.some((values, idx) =>
-        declaredAttrs[idx].some((attr) => {
-          const value = values[attr.toLowerCase() as keyof AttrValues];
-          return value == null || value < 1;
-        })
-      );
+      const invalid = rounds.some((round) => {
+        const vals = valuesFor(s, round);
+        const attrsToCheck: AttrValues[] =
+          exercise.type === "SIMPLE"
+            ? [vals.planned]
+            : exercise.components.map((c) => vals.childValues[c.childExerciseId] ?? EMPTY_ATTRS);
+        return attrsToCheck.some((values, idx) =>
+          declaredAttrs[idx].some((attr) => {
+            const value = values[attr.toLowerCase() as keyof AttrValues];
+            return value == null || value < 1;
+          })
+        );
+      });
 
       if (invalid) {
         e.preventDefault();
@@ -229,6 +299,70 @@ export function TrainingBuilder({
     }
 
     setError(null);
+  }
+
+  function renderValueInputs(
+    s: SelectedExercise,
+    index: number,
+    exercise: BuilderExercise,
+    round: number | null
+  ) {
+    const vals = valuesFor(s, round);
+    return exercise.type === "SIMPLE" ? (
+      <div className="flex flex-wrap gap-3">
+        {exercise.attributeTypes.map((attr) => {
+          const key = attr.toLowerCase() as keyof AttrValues;
+          return (
+            <div key={attr}>
+              <label className="block text-xs text-gray-600 mb-1">
+                {ATTRIBUTE_LABELS[attr]} <span className="text-red-600">*</span>
+              </label>
+              <input
+                type="number"
+                step="any"
+                min={1}
+                required
+                value={vals.planned[key] ?? ""}
+                onChange={(e) => updatePlanned(index, round, key, e.target.value)}
+                className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm"
+              />
+            </div>
+          );
+        })}
+      </div>
+    ) : (
+      <ol className="space-y-2 list-decimal list-inside">
+        {exercise.components.map((c) => (
+          <li key={c.id} className="text-sm">
+            {c.childExercise.name}
+            <div className="flex flex-wrap gap-3 mt-1 ml-4">
+              {c.childExercise.attributeTypes.map((attr) => {
+                const key = attr.toLowerCase() as keyof AttrValues;
+                const childVal = vals.childValues[c.childExerciseId] ?? EMPTY_ATTRS;
+                return (
+                  <div key={attr}>
+                    <label className="block text-xs text-gray-600 mb-1">
+                      {ATTRIBUTE_LABELS[attr]} <span className="text-red-600">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      step="any"
+                      min={1}
+                      required
+                      value={childVal[key] ?? ""}
+                      onChange={(e) =>
+                        updateChildValue(index, round, c.childExerciseId, key, e.target.value)
+                      }
+                      className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </li>
+        ))}
+      </ol>
+    );
   }
 
   return (
@@ -363,61 +497,30 @@ export function TrainingBuilder({
                       />
                     </div>
 
-                    {exercise.type === "SIMPLE" ? (
-                      <div className="flex flex-wrap gap-3">
-                        {exercise.attributeTypes.map((attr) => {
-                          const key = attr.toLowerCase() as keyof AttrValues;
-                          return (
-                            <div key={attr}>
-                              <label className="block text-xs text-gray-600 mb-1">
-                                {ATTRIBUTE_LABELS[attr]} <span className="text-red-600">*</span>
-                              </label>
-                              <input
-                                type="number"
-                                step="any"
-                                min={1}
-                                required
-                                value={s.planned[key] ?? ""}
-                                onChange={(e) => updatePlanned(index, key, e.target.value)}
-                                className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm"
-                              />
+                    {(s.roundsCount > 1 || s.perRound) && (
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={s.perRound}
+                          onChange={(e) => togglePerRound(index, e.target.checked)}
+                        />
+                        Різні атрибути для кожного кола
+                      </label>
+                    )}
+
+                    {s.perRound ? (
+                      <div className="space-y-3">
+                        {Array.from({ length: s.roundsCount }, (_, round) => (
+                          <div key={round} className="rounded-md bg-gray-50 border border-gray-100 p-3">
+                            <div className="text-xs font-medium text-gray-500 mb-2">
+                              Коло {round + 1}
                             </div>
-                          );
-                        })}
+                            {renderValueInputs(s, index, exercise, round)}
+                          </div>
+                        ))}
                       </div>
                     ) : (
-                      <ol className="space-y-2 list-decimal list-inside">
-                        {exercise.components.map((c) => (
-                          <li key={c.id} className="text-sm">
-                            {c.childExercise.name}
-                            <div className="flex flex-wrap gap-3 mt-1 ml-4">
-                              {c.childExercise.attributeTypes.map((attr) => {
-                                const key = attr.toLowerCase() as keyof AttrValues;
-                                const childVal = s.childValues[c.childExerciseId] ?? EMPTY_ATTRS;
-                                return (
-                                  <div key={attr}>
-                                    <label className="block text-xs text-gray-600 mb-1">
-                                      {ATTRIBUTE_LABELS[attr]}{" "}
-                                      <span className="text-red-600">*</span>
-                                    </label>
-                                    <input
-                                      type="number"
-                                      step="any"
-                                      min={1}
-                                      required
-                                      value={childVal[key] ?? ""}
-                                      onChange={(e) =>
-                                        updateChildValue(index, c.childExerciseId, key, e.target.value)
-                                      }
-                                      className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm"
-                                    />
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </li>
-                        ))}
-                      </ol>
+                      renderValueInputs(s, index, exercise, null)
                     )}
 
                     <div>

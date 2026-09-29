@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   overallProgressPercent,
+  plannedForRound,
   progressColor,
   unitRatio,
   type ProgressUnit,
@@ -66,5 +67,34 @@ describe("progressColor", () => {
     [150, "blue"],
   ] as const)("classifies %d%% as %s", (percent, color) => {
     expect(progressColor(percent)).toBe(color);
+  });
+});
+
+describe("plannedForRound", () => {
+  const base = {
+    plannedWeight: 10,
+    plannedTime: null,
+    plannedReps: 5,
+    childValues: [
+      { childExerciseId: "c1", plannedWeight: 20, plannedTime: null, plannedReps: null },
+    ],
+  };
+  const roundValues = [
+    { roundIndex: 1, childExerciseId: null, plannedWeight: 12, plannedTime: null, plannedReps: 6 },
+    { roundIndex: 1, childExerciseId: "c1", plannedWeight: 25, plannedTime: null, plannedReps: null },
+  ];
+
+  it("uses the shared values for every round when not per-round", () => {
+    expect(plannedForRound({ ...base, perRound: false, roundValues }, 1, null)).toEqual({
+      weight: 10,
+      time: null,
+      reps: 5,
+    });
+  });
+
+  it("uses the round's own values when per-round", () => {
+    const te = { ...base, perRound: true, roundValues };
+    expect(plannedForRound(te, 1, null)).toEqual({ weight: 12, time: null, reps: 6 });
+    expect(plannedForRound(te, 1, "c1").weight).toBe(25);
   });
 });

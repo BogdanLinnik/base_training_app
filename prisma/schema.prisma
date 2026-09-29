@@ -110,6 +110,7 @@ model Exercise {
 
   trainingExercises      TrainingExercise[]
   trainingExerciseChildValues TrainingExerciseChildValue[]
+  trainingExerciseRoundValues TrainingExerciseRoundValue[]
   trainingExerciseResults    TrainingExerciseResult[]
 
   createdAt DateTime @default(now())
@@ -207,10 +208,32 @@ model TrainingExercise {
   plannedTime   Int?
   plannedReps   Int?
 
+  // when true, planned values differ per round and live in roundValues; the
+  // planned*/childValues fields above then mirror the first round
+  perRound Boolean @default(false)
+
   childValues TrainingExerciseChildValue[]
+  roundValues TrainingExerciseRoundValue[]
   results     TrainingExerciseResult[]
 
   @@index([trainingId])
+}
+
+// Planned values of a single round, used when TrainingExercise.perRound is set.
+model TrainingExerciseRoundValue {
+  id                 String           @id @default(cuid())
+  trainingExerciseId String
+  trainingExercise   TrainingExercise @relation(fields: [trainingExerciseId], references: [id], onDelete: Cascade)
+  roundIndex         Int
+  // null when the values belong to a SIMPLE training exercise itself
+  childExerciseId    String?
+  childExercise      Exercise?        @relation(fields: [childExerciseId], references: [id])
+
+  plannedWeight Float?
+  plannedTime   Int?
+  plannedReps   Int?
+
+  @@index([trainingExerciseId])
 }
 
 model TrainingExerciseChildValue {

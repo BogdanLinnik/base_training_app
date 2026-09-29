@@ -9,7 +9,7 @@ import {
   canViewTraining,
   deriveTrainingTags,
 } from "@/lib/trainings";
-import { buildProgressUnits, overallProgressPercent } from "@/lib/progress";
+import { buildProgressUnits, overallProgressPercent, plannedForRound } from "@/lib/progress";
 import { StatusBadge, TagBadge } from "@/components/StatusBadge";
 import { ProgressBadge } from "@/components/ProgressBadge";
 import { ATTRIBUTE_LABELS, type AttributeType } from "@/lib/exercises";
@@ -52,6 +52,7 @@ export default async function TrainingDetailPage({
         include: {
           exercise: true,
           childValues: { include: { childExercise: true } },
+          roundValues: true,
           results: true,
         },
       },
@@ -256,11 +257,7 @@ export default async function TrainingDetailPage({
                     )}
                     <ExerciseRoundRow
                       attrs={te.exercise.attributeTypes as AttributeType[]}
-                      planned={{
-                        weight: te.plannedWeight,
-                        time: te.plannedTime,
-                        reps: te.plannedReps,
-                      }}
+                      planned={plannedForRound(te, round, null)}
                       editable={resultsEditable}
                       readonlyValues={!resultsEditable && training.status === "DONE"}
                       fieldPrefix={`res__${te.id}__${round}__self`}
@@ -282,11 +279,7 @@ export default async function TrainingDetailPage({
                           <div className="text-sm mb-1">{cv.childExercise.name}</div>
                           <ExerciseRoundRow
                             attrs={cv.childExercise.attributeTypes as AttributeType[]}
-                            planned={{
-                              weight: cv.plannedWeight,
-                              time: cv.plannedTime,
-                              reps: cv.plannedReps,
-                            }}
+                            planned={plannedForRound(te, round, cv.childExerciseId)}
                             editable={resultsEditable}
                             readonlyValues={!resultsEditable && training.status === "DONE"}
                             fieldPrefix={`res__${te.id}__${round}__${cv.childExerciseId}`}

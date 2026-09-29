@@ -33,6 +33,11 @@ const attrValuesSchema = z.object({
   reps: z.number().nullable().optional(),
 });
 
+const roundValuesSchema = z.object({
+  planned: attrValuesSchema.nullable().optional(),
+  childValues: z.record(z.string(), attrValuesSchema).optional(),
+});
+
 const exercisesPayloadSchema = z.array(
   z.object({
     exerciseId: z.string().min(1),
@@ -40,8 +45,27 @@ const exercisesPayloadSchema = z.array(
     comment: z.string().optional(),
     planned: attrValuesSchema.nullable().optional(),
     childValues: z.record(z.string(), attrValuesSchema).optional(),
+    perRound: z.boolean().optional(),
+    roundValues: z.array(roundValuesSchema).optional(),
   })
 );
+
+type AttrKind = "WEIGHT" | "TIME" | "REPS";
+type AttrValuesInput = z.infer<typeof attrValuesSchema>;
+
+function assertAttrsFilled(
+  values: AttrValuesInput | null | undefined,
+  attrTypes: AttrKind[],
+  exerciseName: string
+) {
+  for (const attr of attrTypes) {
+    const key = attr === "WEIGHT" ? "weight" : attr === "TIME" ? "time" : "reps";
+    const value = values?.[key];
+    if (value == null || value < 1) {
+      throw new Error(`Заповніть усі значення атрибутів для вправи «${exerciseName}»`);
+    }
+  }
+}
 
 /** Parses and validates the `exercisesJson` hidden field produced by TrainingBuilder. */
 async function buildTrainingExercisesData(formData: FormData) {
@@ -73,48 +97,77 @@ async function buildTrainingExercisesData(formData: FormData) {
       throw new Error(`Вкажіть кількість кіл для вправи «${exercise.name}»`);
     }
 
+    const perRound = item.perRound === true;
+    // With per-round values, every round needs its own set; the first round also
+    // fills the plain planned fields so they stay meaningful on their own.
+    const rounds = perRound ? item.roundValues ?? [] : [];
+    if (perRound && rounds.length !== roundsCount) {
+      throw new Error(`Вкажіть значення для кожного кола вправи «${exercise.name}»`);
+    }
+
     if (exercise.type === "SIMPLE") {
-      const attrTypes = exercise.attributeTypes as ("WEIGHT" | "TIME" | "REPS")[];
-      for (const attr of attrTypes) {
-        const key = attr === "WEIGHT" ? "weight" : attr === "TIME" ? "time" : "reps";
-        const value = item.planned?.[key];
-        if (value == null || value < 1) {
-          throw new Error(`Заповніть усі значення атрибутів для вправи «${exercise.name}»`);
-        }
+      const attrTypes = exercise.attributeTypes as AttrKind[];
+      if (perRound) {
+        for (const r of rounds) assertAttrsFilled(r.planned, attrTypes, exercise.name);
+      } else {
+        assertAttrsFilled(item.planned, attrTypes, exercise.name);
       }
+      const base = perRound ? rounds[0].planned : item.planned;
       return {
         exerciseId: item.exerciseId,
         order,
         roundsCount,
         comment: item.comment?.trim() || null,
-        plannedWeight: item.planned?.weight ?? null,
-        plannedTime: item.planned?.time ?? null,
-        plannedReps: item.planned?.reps ?? null,
+        plannedWeight: base?.weight ?? null,
+        plannedTime: base?.time ?? null,
+        plannedReps: base?.reps ?? null,
+        perRound,
+        roundValues: {
+          create: rounds.map((r, roundIndex) => ({
+            roundIndex,
+            plannedWeight: r.planned?.weight ?? null,
+            plannedTime: r.planned?.time ?? null,
+            plannedReps: r.planned?.reps ?? null,
+          })),
+        },
       };
     }
 
     for (const c of exercise.components) {
-      const childAttrTypes = c.childExercise.attributeTypes as ("WEIGHT" | "TIME" | "REPS")[];
-      for (const attr of childAttrTypes) {
-        const key = attr === "WEIGHT" ? "weight" : attr === "TIME" ? "time" : "reps";
-        const value = item.childValues?.[c.childExerciseId]?.[key];
-        if (value == null || value < 1) {
-          throw new Error(`Заповніть усі значення атрибутів для вправи «${exercise.name}»`);
+      const childAttrTypes = c.childExercise.attributeTypes as AttrKind[];
+      if (perRound) {
+        for (const r of rounds) {
+          assertAttrsFilled(r.childValues?.[c.childExerciseId], childAttrTypes, exercise.name);
         }
+      } else {
+        assertAttrsFilled(item.childValues?.[c.childExerciseId], childAttrTypes, exercise.name);
       }
     }
+    const baseChildValues = perRound ? rounds[0].childValues : item.childValues;
     return {
       exerciseId: item.exerciseId,
       order,
       roundsCount,
       comment: item.comment?.trim() || null,
+      perRound,
       childValues: {
         create: exercise.components.map((c) => ({
           childExerciseId: c.childExerciseId,
-          plannedWeight: item.childValues?.[c.childExerciseId]?.weight ?? null,
-          plannedTime: item.childValues?.[c.childExerciseId]?.time ?? null,
-          plannedReps: item.childValues?.[c.childExerciseId]?.reps ?? null,
+          plannedWeight: baseChildValues?.[c.childExerciseId]?.weight ?? null,
+          plannedTime: baseChildValues?.[c.childExerciseId]?.time ?? null,
+          plannedReps: baseChildValues?.[c.childExerciseId]?.reps ?? null,
         })),
+      },
+      roundValues: {
+        create: rounds.flatMap((r, roundIndex) =>
+          exercise.components.map((c) => ({
+            roundIndex,
+            childExerciseId: c.childExerciseId,
+            plannedWeight: r.childValues?.[c.childExerciseId]?.weight ?? null,
+            plannedTime: r.childValues?.[c.childExerciseId]?.time ?? null,
+            plannedReps: r.childValues?.[c.childExerciseId]?.reps ?? null,
+          }))
+        ),
       },
     };
   });
@@ -388,7 +441,7 @@ export async function duplicateTraining(trainingId: string) {
   const training = await prisma.training.findUniqueOrThrow({
     where: { id: trainingId },
     include: {
-      exercises: { orderBy: { order: "asc" }, include: { childValues: true } },
+      exercises: { orderBy: { order: "asc" }, include: { childValues: true, roundValues: true } },
     },
   });
   if (training.createdById !== userId && training.forUserId !== userId) {
@@ -410,6 +463,16 @@ export async function duplicateTraining(trainingId: string) {
           plannedWeight: te.plannedWeight,
           plannedTime: te.plannedTime,
           plannedReps: te.plannedReps,
+          perRound: te.perRound,
+          roundValues: {
+            create: te.roundValues.map((rv) => ({
+              roundIndex: rv.roundIndex,
+              childExerciseId: rv.childExerciseId,
+              plannedWeight: rv.plannedWeight,
+              plannedTime: rv.plannedTime,
+              plannedReps: rv.plannedReps,
+            })),
+          },
           childValues: {
             create: te.childValues.map((cv) => ({
               childExerciseId: cv.childExerciseId,

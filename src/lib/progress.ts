@@ -65,14 +65,18 @@ type ResultRow = {
 };
 
 type ChildValueRow = {
-  childExerciseId: string;
+  childExerciseId: string | null;
   plannedWeight: number | null;
   plannedTime: number | null;
   plannedReps: number | null;
 };
 
+type RoundValueRow = ChildValueRow & { roundIndex: number; childExerciseId: string | null };
+
 type TrainingExerciseRow = {
   roundsCount: number;
+  perRound?: boolean;
+  roundValues?: RoundValueRow[];
   plannedWeight: number | null;
   plannedTime: number | null;
   plannedReps: number | null;
@@ -80,6 +84,38 @@ type TrainingExerciseRow = {
   childValues: ChildValueRow[];
   results: ResultRow[];
 };
+
+/**
+ * Planned values for one round of a training exercise (childExerciseId is null
+ * for a SIMPLE exercise). Uses the per-round values when the exercise has them,
+ * otherwise the same values apply to every round.
+ */
+export function plannedForRound(
+  te: {
+    perRound?: boolean;
+    roundValues?: RoundValueRow[];
+    plannedWeight: number | null;
+    plannedTime: number | null;
+    plannedReps: number | null;
+    childValues: ChildValueRow[];
+  },
+  round: number,
+  childExerciseId: string | null
+): { weight: number | null; time: number | null; reps: number | null } {
+  const rv = te.perRound
+    ? te.roundValues?.find((v) => v.roundIndex === round && v.childExerciseId === childExerciseId)
+    : undefined;
+  const row =
+    rv ??
+    (childExerciseId == null
+      ? te
+      : te.childValues.find((c) => c.childExerciseId === childExerciseId));
+  return {
+    weight: row?.plannedWeight ?? null,
+    time: row?.plannedTime ?? null,
+    reps: row?.plannedReps ?? null,
+  };
+}
 
 /** Builds the flat list of planned/actual comparison units for a training's exercises. */
 export function buildProgressUnits(trainingExercises: TrainingExerciseRow[]): ProgressUnit[] {
@@ -90,7 +126,7 @@ export function buildProgressUnits(trainingExercises: TrainingExerciseRow[]): Pr
       if (te.exercise.type === "SIMPLE") {
         const result = te.results.find((r) => r.roundIndex === round && r.childExerciseId == null);
         units.push({
-          planned: { weight: te.plannedWeight, time: te.plannedTime, reps: te.plannedReps },
+          planned: plannedForRound(te, round, null),
           actual: result
             ? { weight: result.actualWeight, time: result.actualTime, reps: result.actualReps }
             : null,
@@ -101,11 +137,7 @@ export function buildProgressUnits(trainingExercises: TrainingExerciseRow[]): Pr
             (r) => r.roundIndex === round && r.childExerciseId === child.childExerciseId
           );
           units.push({
-            planned: {
-              weight: child.plannedWeight,
-              time: child.plannedTime,
-              reps: child.plannedReps,
-            },
+            planned: plannedForRound(te, round, child.childExerciseId),
             actual: result
               ? { weight: result.actualWeight, time: result.actualTime, reps: result.actualReps }
               : null,

@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { plannedForRound } from "@/lib/progress";
 import { canEditTraining } from "@/lib/trainings";
 import { updateTraining } from "@/app/actions/trainings";
 import { TrainingBuilder, type TrainingBuilderDefaultValues } from "@/components/TrainingBuilder";
@@ -19,7 +20,7 @@ export default async function EditTrainingPage({
     prisma.training.findUnique({
       where: { id },
       include: {
-        exercises: { orderBy: { order: "asc" }, include: { childValues: true } },
+        exercises: { orderBy: { order: "asc" }, include: { childValues: true, roundValues: true } },
       },
     }),
     prisma.user.findMany({ orderBy: { name: "asc" } }),
@@ -43,6 +44,13 @@ export default async function EditTrainingPage({
       plannedWeight: te.plannedWeight,
       plannedTime: te.plannedTime,
       plannedReps: te.plannedReps,
+      perRound: te.perRound,
+      roundValues: Array.from({ length: te.roundsCount }, (_, round) => ({
+        planned: plannedForRound(te, round, null),
+        childValues: Object.fromEntries(
+          te.childValues.map((cv) => [cv.childExerciseId, plannedForRound(te, round, cv.childExerciseId)])
+        ),
+      })),
       childValues: Object.fromEntries(
         te.childValues.map((cv) => [
           cv.childExerciseId,
