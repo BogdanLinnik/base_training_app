@@ -50,3 +50,14 @@ label:has(input[type="checkbox"]:disabled),
 label:has(input[type="radio"]:disabled) {
   cursor: not-allowed;
 }
+
+/* iOS Safari zooms the page in when a focused field's font is under 16px,
+   which leaves the page horizontally scrollable afterwards. Keep fields at
+   16px on touch screens so focusing never triggers the zoom. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
