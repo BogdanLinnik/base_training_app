@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import {
   canEnterResults,
   canTransition,
+  canDeleteTraining,
   canEditTraining,
   canManageViewers,
   isViewer,
@@ -443,7 +444,7 @@ export async function removeViewer(trainingId: string, viewerUserId: string) {
 export async function deleteTraining(trainingId: string) {
   const userId = await requireUserId();
   const training = await prisma.training.findUniqueOrThrow({ where: { id: trainingId } });
-  if (!canEditTraining(training, userId)) throw new Error("Немає прав видаляти це тренування");
+  if (!canDeleteTraining(training, userId)) throw new Error("Немає прав видаляти це тренування");
 
   await prisma.training.delete({ where: { id: trainingId } });
   revalidatePath("/");

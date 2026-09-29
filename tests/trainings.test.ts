@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canDeleteTraining,
   canEditTraining,
   canEnterResults,
   canManageViewers,
@@ -74,6 +75,22 @@ describe("canEditTraining", () => {
   it("blocks the assignee from editing the plan", () => {
     const t = { createdById: trainer, forUserId: athlete, status: "ACCEPTED" as const };
     expect(canEditTraining(t, athlete)).toBe(false);
+  });
+});
+
+describe("canDeleteTraining", () => {
+  it("lets the owner delete their own training in any status", () => {
+    for (const status of ["CREATED", "IN_PROGRESS", "DONE"] as const) {
+      const t = { createdById: trainer, forUserId: trainer, status };
+      expect(canDeleteTraining(t, trainer)).toBe(true);
+    }
+  });
+
+  it("keeps the edit rule for trainings assigned to someone else", () => {
+    const t = { createdById: trainer, forUserId: athlete, status: "DONE" as const };
+    expect(canDeleteTraining(t, trainer)).toBe(false);
+    expect(canDeleteTraining({ ...t, status: "PENDING_REVIEW" }, trainer)).toBe(true);
+    expect(canDeleteTraining({ ...t, status: "PENDING_REVIEW" }, athlete)).toBe(false);
   });
 });
 

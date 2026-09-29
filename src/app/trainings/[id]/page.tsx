@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import {
+  canDeleteTraining,
   canEditTraining,
   canEnterResults,
   canManageViewers,
@@ -71,6 +72,7 @@ export default async function TrainingDetailPage({
   const tags = deriveTrainingTags(training);
   const transition = canTransition(training, userId);
   const editable = canEditTraining(training, userId);
+  const deletable = canDeleteTraining(training, userId);
   const resultsEditable = canEnterResults(training, userId);
   const manageViewers = canManageViewers(training, userId);
   const isParty = training.createdById === userId || training.forUserId === userId;
@@ -163,24 +165,24 @@ export default async function TrainingDetailPage({
             </form>
           )}
           {editable && (
-            <>
-              <Link
-                href={`/trainings/${training.id}/edit`}
-                className="text-sm text-blue-600 hover:underline"
-              >
-                Редагувати
-              </Link>
-              <form
-                action={async () => {
-                  "use server";
-                  await deleteTraining(training.id);
-                }}
-              >
-                <SubmitButton className="text-sm text-red-600 hover:underline">
-                  Видалити
-                </SubmitButton>
-              </form>
-            </>
+            <Link
+              href={`/trainings/${training.id}/edit`}
+              className="text-sm text-blue-600 hover:underline"
+            >
+              Редагувати
+            </Link>
+          )}
+          {deletable && (
+            <form
+              action={async () => {
+                "use server";
+                await deleteTraining(training.id);
+              }}
+            >
+              <SubmitButton className="text-sm text-red-600 hover:underline">
+                Видалити
+              </SubmitButton>
+            </form>
           )}
         </div>
       </div>

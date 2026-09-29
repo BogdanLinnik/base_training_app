@@ -94,6 +94,12 @@ export function canEditTraining(training: TrainingLike, userId: string): boolean
   );
 }
 
+/** Own trainings can always be deleted; others' only while still editable by their creator. */
+export function canDeleteTraining(training: TrainingLike, userId: string): boolean {
+  if (training.createdById === userId && training.forUserId === userId) return true;
+  return canEditTraining(training, userId);
+}
+
 export function canEnterResults(training: TrainingLike, userId: string): boolean {
   return training.forUserId === userId && training.status === "IN_PROGRESS";
 }
