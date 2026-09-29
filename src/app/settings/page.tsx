@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { NOTIFICATION_SETTINGS_LABELS } from "@/lib/notifications";
 import { updateNotificationSettings } from "@/app/actions/notifications";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -39,12 +40,12 @@ export default async function SettingsPage() {
             </label>
           ))}
         </div>
-        <button
-          type="submit"
+        <SubmitButton
+         
           className="rounded-md bg-blue-600 text-white text-sm px-4 py-2 hover:bg-blue-700"
         >
           Зберегти
-        </button>
+        </SubmitButton>
       </form>
     </div>
   );

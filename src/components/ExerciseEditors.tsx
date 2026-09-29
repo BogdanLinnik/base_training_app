@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { addExerciseEditor, removeExerciseEditor } from "@/app/actions/exercises";
+import { SubmitButton } from "@/components/SubmitButton";
 
 /** Author-only: lets other users edit this exercise. */
 export async function ExerciseEditors({
@@ -37,9 +38,9 @@ export async function ExerciseEditors({
                 await removeExerciseEditor(exerciseId, e.userId);
               }}
             >
-              <button type="submit" className="text-xs text-red-600 hover:underline">
+              <SubmitButton className="text-xs text-red-600 hover:underline">
                 Прибрати
-              </button>
+              </SubmitButton>
             </form>
           </li>
         ))}
@@ -58,12 +59,12 @@ export async function ExerciseEditors({
               </option>
             ))}
           </select>
-          <button
-            type="submit"
+          <SubmitButton
+           
             className="rounded-md bg-gray-800 text-white text-sm px-4 py-2 hover:bg-gray-700"
           >
             Додати
-          </button>
+          </SubmitButton>
         </form>
       )}
     </div>

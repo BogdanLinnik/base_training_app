@@ -1,5 +1,6 @@
 import { auth, signIn, testLoginEnabled } from "@/auth";
 import { redirect } from "next/navigation";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export default async function LoginPage() {
   const session = await auth();
@@ -19,12 +20,12 @@ export default async function LoginPage() {
             await signIn("google", { redirectTo: "/" });
           }}
         >
-          <button
-            type="submit"
+          <SubmitButton
+           
             className="w-full rounded-md border border-gray-300 bg-white py-2 px-4 font-medium hover:bg-gray-50"
           >
             Увійти через Google
-          </button>
+          </SubmitButton>
         </form>
 
         {testLoginEnabled && (
@@ -56,12 +57,12 @@ export default async function LoginPage() {
                 placeholder="Ім'я"
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
               />
-              <button
-                type="submit"
+              <SubmitButton
+               
                 className="w-full rounded-md bg-gray-800 text-white py-2 px-4 text-sm font-medium hover:bg-gray-700"
               >
                 Увійти тестовим користувачем
-              </button>
+              </SubmitButton>
             </form>
           </div>
         )}

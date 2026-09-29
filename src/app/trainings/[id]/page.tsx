@@ -23,6 +23,7 @@ import {
   submitTrainingResults,
 } from "@/app/actions/trainings";
 import Link from "next/link";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export default async function TrainingDetailPage({
   params,
@@ -136,19 +137,19 @@ export default async function TrainingDetailPage({
         <div className="mt-4 flex flex-wrap items-center gap-3">
           {transition && (
             <form action={changeStatusWithId}>
-              <button
-                type="submit"
+              <SubmitButton
+               
                 className="rounded-md bg-blue-600 text-white text-sm px-3 py-1.5 hover:bg-blue-700"
               >
                 {transition.label}
-              </button>
+              </SubmitButton>
             </form>
           )}
           {isParty && (
             <form action={duplicateWithId}>
-              <button type="submit" className="text-sm text-blue-600 hover:underline">
+              <SubmitButton className="text-sm text-blue-600 hover:underline">
                 Дублювати
-              </button>
+              </SubmitButton>
             </form>
           )}
           {editable && (
@@ -165,9 +166,9 @@ export default async function TrainingDetailPage({
                   await deleteTraining(training.id);
                 }}
               >
-                <button type="submit" className="text-sm text-red-600 hover:underline">
+                <SubmitButton className="text-sm text-red-600 hover:underline">
                   Видалити
-                </button>
+                </SubmitButton>
               </form>
             </>
           )}
@@ -191,9 +192,9 @@ export default async function TrainingDetailPage({
                       await removeViewer(training.id, v.userId);
                     }}
                   >
-                    <button type="submit" className="text-xs text-red-600 hover:underline">
+                    <SubmitButton className="text-xs text-red-600 hover:underline">
                       Прибрати
-                    </button>
+                    </SubmitButton>
                   </form>
                 )}
               </li>
@@ -215,12 +216,12 @@ export default async function TrainingDetailPage({
                   </option>
                 ))}
               </select>
-              <button
-                type="submit"
+              <SubmitButton
+               
                 className="rounded-md bg-gray-800 text-white text-sm px-4 py-2 hover:bg-gray-700"
               >
                 Додати
-              </button>
+              </SubmitButton>
             </form>
           )}
         </div>
@@ -301,12 +302,12 @@ export default async function TrainingDetailPage({
           </fieldset>
         ))}
         {resultsEditable && (
-          <button
-            type="submit"
+          <SubmitButton
+           
             className="rounded-md bg-blue-600 text-white text-sm px-4 py-2 hover:bg-blue-700"
           >
             Зберегти фактичні результати
-          </button>
+          </SubmitButton>
         )}
       </form>
 
@@ -333,12 +334,12 @@ export default async function TrainingDetailPage({
             placeholder="Ваш коментар..."
             className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
-          <button
-            type="submit"
+          <SubmitButton
+           
             className="rounded-md bg-gray-800 text-white text-sm px-4 py-2 hover:bg-gray-700"
           >
             Надіслати
-          </button>
+          </SubmitButton>
         </form>
       </div>
 

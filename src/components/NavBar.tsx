@@ -1,5 +1,6 @@
 "use client";
 
+import { SubmitButton } from "@/components/SubmitButton";
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -79,9 +80,9 @@ export function NavBar({
             {avatar}
           </span>
           <form action={signOutAction}>
-            <button type="submit" className="text-blue-600 hover:underline">
+            <SubmitButton className="text-blue-600 hover:underline">
               Вийти
-            </button>
+            </SubmitButton>
           </form>
         </div>
 
@@ -151,12 +152,12 @@ export function NavBar({
                 <span className="truncate">{user.name ?? user.email}</span>
               </div>
               <form action={signOutAction}>
-                <button
-                  type="submit"
+                <SubmitButton
+                 
                   className="text-sm text-blue-600 hover:underline"
                 >
                   Вийти
-                </button>
+                </SubmitButton>
               </form>
             </div>
           </div>

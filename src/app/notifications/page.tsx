@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { describeNotification } from "@/lib/notifications";
 import { toggleNotificationRead, openNotification } from "@/app/actions/notifications";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export default async function NotificationsPage() {
   const session = await auth();
@@ -33,8 +34,8 @@ export default async function NotificationsPage() {
               }`}
             >
               <form action={toggleWithId} className="flex items-center pl-3">
-                <button
-                  type="submit"
+                <SubmitButton
+                 
                   title={isUnread ? "Позначити прочитаним" : "Позначити непрочитаним"}
                   className={`w-2.5 h-2.5 rounded-full shrink-0 ${
                     isUnread ? "bg-blue-600" : "bg-gray-300"

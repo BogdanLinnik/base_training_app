@@ -6,6 +6,7 @@ import { AddButton } from "@/components/AddButton";
 import { canEditExercise, isExerciseAuthor } from "@/lib/trainings";
 import { getUsedExerciseIds } from "@/lib/exerciseUsage";
 import { deleteExercise } from "@/app/actions/exercises";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export default async function ComplexExercisesPage() {
   const session = await auth();
@@ -69,9 +70,9 @@ export default async function ComplexExercisesPage() {
                         await deleteExercise(exercise.id);
                       }}
                     >
-                      <button type="submit" className="text-sm text-red-600 hover:underline">
+                      <SubmitButton className="text-sm text-red-600 hover:underline">
                         Видалити
-                      </button>
+                      </SubmitButton>
                     </form>
                   )}
                 </div>

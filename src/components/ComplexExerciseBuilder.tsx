@@ -1,5 +1,6 @@
 "use client";
 
+import { SubmitButton } from "@/components/SubmitButton";
 import { useMemo, useState } from "react";
 import { VideoButton } from "@/components/VideoButton";
 import { ExercisePickerModal } from "@/components/ExercisePickerModal";
@@ -180,13 +181,13 @@ export function ComplexExerciseBuilder({
         </div>
       </div>
 
-      <button
-        type="submit"
+      <SubmitButton
+       
         disabled={selected.length < 2}
         className="rounded-md bg-blue-600 text-white text-sm px-4 py-2 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {submitLabel}
-      </button>
+      </SubmitButton>
     </form>
   );
 }

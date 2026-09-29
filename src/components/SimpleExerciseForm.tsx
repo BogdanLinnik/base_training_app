@@ -1,5 +1,6 @@
 "use client";
 
+import { SubmitButton } from "@/components/SubmitButton";
 import { useState } from "react";
 import { ATTRIBUTE_LABELS, ATTRIBUTE_TYPES, type AttributeType } from "@/lib/exercises";
 
@@ -101,12 +102,12 @@ export function SimpleExerciseForm({
           ))}
         </div>
       </div>
-      <button
-        type="submit"
+      <SubmitButton
+       
         className="rounded-md bg-blue-600 text-white text-sm px-4 py-2 hover:bg-blue-700"
       >
         {submitLabel}
-      </button>
+      </SubmitButton>
     </form>
   );
 }
