@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { Tabs } from "@/components/Tabs";
 import { AddButton } from "@/components/AddButton";
-import { canEditExercise } from "@/lib/trainings";
+import { canEditExercise, isExerciseAuthor } from "@/lib/trainings";
 import { getUsedExerciseIds } from "@/lib/exerciseUsage";
 import { deleteExercise } from "@/app/actions/exercises";
 
@@ -16,6 +16,7 @@ export default async function ComplexExercisesPage() {
       where: { type: "COMPLEX" },
       orderBy: { createdAt: "desc" },
       include: {
+        editors: true,
         components: {
           orderBy: { order: "asc" },
           include: { childExercise: true },
@@ -59,7 +60,7 @@ export default async function ComplexExercisesPage() {
                   >
                     Редагувати
                   </Link>
-                  {usedExerciseIds.has(exercise.id) ? (
+                  {!isExerciseAuthor(exercise, userId) ? null : usedExerciseIds.has(exercise.id) ? (
                     <span className="text-xs text-gray-400">Використовується</span>
                   ) : (
                     <form

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Tabs } from "@/components/Tabs";
 import { AddButton } from "@/components/AddButton";
 import { ATTRIBUTE_LABELS, type AttributeType } from "@/lib/exercises";
-import { canEditExercise } from "@/lib/trainings";
+import { canEditExercise, isExerciseAuthor } from "@/lib/trainings";
 import { VideoButton } from "@/components/VideoButton";
 import { getUsedExerciseIds } from "@/lib/exerciseUsage";
 import { deleteExercise } from "@/app/actions/exercises";
@@ -17,6 +17,7 @@ export default async function SimpleExercisesPage() {
     prisma.exercise.findMany({
       where: { type: "SIMPLE" },
       orderBy: { createdAt: "desc" },
+      include: { editors: true },
     }),
     getUsedExerciseIds(),
   ]);
@@ -65,7 +66,7 @@ export default async function SimpleExercisesPage() {
                   >
                     Редагувати
                   </Link>
-                  {usedExerciseIds.has(exercise.id) ? (
+                  {!isExerciseAuthor(exercise, userId) ? null : usedExerciseIds.has(exercise.id) ? (
                     <span className="text-xs text-gray-400">Використовується</span>
                   ) : (
                     <form

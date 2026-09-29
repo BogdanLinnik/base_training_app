@@ -98,6 +98,15 @@ export function canEnterResults(training: TrainingLike, userId: string): boolean
   return training.forUserId === userId && training.status === "IN_PROGRESS";
 }
 
-export function canEditExercise(exercise: { createdById: string }, userId: string): boolean {
+/** Only the author may delete an exercise or add/remove its editors. */
+export function isExerciseAuthor(exercise: { createdById: string }, userId: string): boolean {
   return exercise.createdById === userId;
+}
+
+/** The author, or someone the author allowed to edit. */
+export function canEditExercise(
+  exercise: { createdById: string; editors: { userId: string }[] },
+  userId: string
+): boolean {
+  return isExerciseAuthor(exercise, userId) || exercise.editors.some((e) => e.userId === userId);
 }

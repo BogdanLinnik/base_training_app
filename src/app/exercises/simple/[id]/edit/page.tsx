@@ -1,9 +1,10 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { canEditExercise } from "@/lib/trainings";
+import { canEditExercise, isExerciseAuthor } from "@/lib/trainings";
 import { updateSimpleExercise } from "@/app/actions/exercises";
 import { SimpleExerciseForm } from "@/components/SimpleExerciseForm";
 import type { AttributeType } from "@/lib/exercises";
+import { ExerciseEditors } from "@/components/ExerciseEditors";
 import { notFound, redirect } from "next/navigation";
 
 export default async function EditSimpleExercisePage({
@@ -16,7 +17,7 @@ export default async function EditSimpleExercisePage({
   const userId = session!.user.id;
 
   const [exercise, otherExercises] = await Promise.all([
-    prisma.exercise.findUnique({ where: { id } }),
+    prisma.exercise.findUnique({ where: { id }, include: { editors: true } }),
     prisma.exercise.findMany({ where: { id: { not: id } }, select: { name: true } }),
   ]);
   if (!exercise || exercise.type !== "SIMPLE") notFound();
@@ -38,6 +39,9 @@ export default async function EditSimpleExercisePage({
           attributeTypes: exercise.attributeTypes as AttributeType[],
         }}
       />
+      {isExerciseAuthor(exercise, userId) && (
+        <ExerciseEditors exerciseId={exercise.id} authorId={exercise.createdById} />
+      )}
     </div>
   );
 }

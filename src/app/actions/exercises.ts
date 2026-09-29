@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { canEditExercise } from "@/lib/trainings";
+import { canEditExercise, isExerciseAuthor } from "@/lib/trainings";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -57,7 +57,10 @@ export async function createSimpleExercise(formData: FormData) {
 
 export async function updateSimpleExercise(exerciseId: string, formData: FormData) {
   const userId = await requireUserId();
-  const exercise = await prisma.exercise.findUniqueOrThrow({ where: { id: exerciseId } });
+  const exercise = await prisma.exercise.findUniqueOrThrow({
+    where: { id: exerciseId },
+    include: { editors: true },
+  });
   if (!canEditExercise(exercise, userId)) throw new Error("Немає прав на редагування");
 
   const name = String(formData.get("name") ?? "").trim();
@@ -127,7 +130,10 @@ export async function createComplexExercise(formData: FormData) {
 
 export async function updateComplexExercise(exerciseId: string, formData: FormData) {
   const userId = await requireUserId();
-  const exercise = await prisma.exercise.findUniqueOrThrow({ where: { id: exerciseId } });
+  const exercise = await prisma.exercise.findUniqueOrThrow({
+    where: { id: exerciseId },
+    include: { editors: true },
+  });
   if (!canEditExercise(exercise, userId)) throw new Error("Немає прав на редагування");
 
   const name = String(formData.get("name") ?? "").trim();
@@ -161,7 +167,7 @@ export async function updateComplexExercise(exerciseId: string, formData: FormDa
 export async function deleteExercise(exerciseId: string) {
   const userId = await requireUserId();
   const exercise = await prisma.exercise.findUniqueOrThrow({ where: { id: exerciseId } });
-  if (!canEditExercise(exercise, userId)) throw new Error("Немає прав видаляти цю вправу");
+  if (!isExerciseAuthor(exercise, userId)) throw new Error("Немає прав видаляти цю вправу");
 
   const [usedInTraining, usedInComplex] = await Promise.all([
     prisma.trainingExercise.count({ where: { exerciseId } }),
@@ -177,4 +183,37 @@ export async function deleteExercise(exerciseId: string) {
 
   const path = exercise.type === "SIMPLE" ? "/exercises/simple" : "/exercises/complex";
   revalidatePath(path);
+}
+
+function exerciseEditPath(exercise: { id: string; type: "SIMPLE" | "COMPLEX" }) {
+  return `/exercises/${exercise.type === "SIMPLE" ? "simple" : "complex"}/${exercise.id}/edit`;
+}
+
+/** Only the author may let another user edit the exercise. */
+export async function addExerciseEditor(exerciseId: string, formData: FormData) {
+  const userId = await requireUserId();
+  const editorUserId = String(formData.get("editorUserId") ?? "");
+  if (!editorUserId) throw new Error("Оберіть користувача");
+
+  const exercise = await prisma.exercise.findUniqueOrThrow({ where: { id: exerciseId } });
+  if (!isExerciseAuthor(exercise, userId)) throw new Error("Немає прав додавати редакторів");
+  if (editorUserId === exercise.createdById) throw new Error("Автор вже може редагувати вправу");
+
+  await prisma.exerciseEditor.upsert({
+    where: { exerciseId_userId: { exerciseId, userId: editorUserId } },
+    create: { exerciseId, userId: editorUserId, addedById: userId },
+    update: {},
+  });
+
+  revalidatePath(exerciseEditPath(exercise));
+}
+
+export async function removeExerciseEditor(exerciseId: string, editorUserId: string) {
+  const userId = await requireUserId();
+  const exercise = await prisma.exercise.findUniqueOrThrow({ where: { id: exerciseId } });
+  if (!isExerciseAuthor(exercise, userId)) throw new Error("Немає прав видаляти редакторів");
+
+  await prisma.exerciseEditor.deleteMany({ where: { exerciseId, userId: editorUserId } });
+
+  revalidatePath(exerciseEditPath(exercise));
 }

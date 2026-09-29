@@ -25,6 +25,8 @@ model User {
   sessions Session[]
 
   createdExercises   Exercise[]
+  editableExercises    ExerciseEditor[] @relation("ExerciseEditorUser")
+  addedExerciseEditors ExerciseEditor[] @relation("ExerciseEditorAddedBy")
   createdTrainings   Training[] @relation("TrainingCreatedBy")
   assignedTrainings  Training[] @relation("TrainingForUser")
   comments           Comment[]
@@ -104,12 +106,30 @@ model Exercise {
   // complex exercises that include this exercise as a child, when it is SIMPLE
   usedIn     ComplexExerciseItem[] @relation("ChildExercise")
 
+  editors ExerciseEditor[]
+
   trainingExercises      TrainingExercise[]
   trainingExerciseChildValues TrainingExerciseChildValue[]
   trainingExerciseResults    TrainingExerciseResult[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Lets someone other than the author edit an exercise. Only the author may
+// add or remove editors (and delete the exercise).
+model ExerciseEditor {
+  id         String   @id @default(cuid())
+  exerciseId String
+  exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation("ExerciseEditorUser", fields: [userId], references: [id], onDelete: Cascade)
+  addedById  String
+  addedBy    User     @relation("ExerciseEditorAddedBy", fields: [addedById], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@unique([exerciseId, userId])
+  @@index([userId])
 }
 
 model ComplexExerciseItem {

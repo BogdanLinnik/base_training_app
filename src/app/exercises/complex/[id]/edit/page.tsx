@@ -1,8 +1,9 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { canEditExercise } from "@/lib/trainings";
+import { canEditExercise, isExerciseAuthor } from "@/lib/trainings";
 import { updateComplexExercise } from "@/app/actions/exercises";
 import { ComplexExerciseBuilder } from "@/components/ComplexExerciseBuilder";
+import { ExerciseEditors } from "@/components/ExerciseEditors";
 import { notFound, redirect } from "next/navigation";
 
 export default async function EditComplexExercisePage({
@@ -17,7 +18,7 @@ export default async function EditComplexExercisePage({
   const [exercise, simpleExercises, otherExercises] = await Promise.all([
     prisma.exercise.findUnique({
       where: { id },
-      include: { components: { orderBy: { order: "asc" } } },
+      include: { components: { orderBy: { order: "asc" } }, editors: true },
     }),
     prisma.exercise.findMany({
       where: { type: "SIMPLE" },
@@ -46,6 +47,9 @@ export default async function EditComplexExercisePage({
           children: exercise.components.map((c) => c.childExerciseId),
         }}
       />
+      {isExerciseAuthor(exercise, userId) && (
+        <ExerciseEditors exerciseId={exercise.id} authorId={exercise.createdById} />
+      )}
     </div>
   );
 }
