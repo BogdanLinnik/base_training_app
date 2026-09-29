@@ -5,6 +5,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOutAction } from "@/app/actions/auth";
+import { Logo } from "@/components/Logo";
 
 const NAV_LINKS = [
   { href: "/", label: "Тренування", match: (p: string) => p === "/" || p.startsWith("/trainings") },
@@ -35,9 +36,10 @@ export function NavBar({
 
   return (
     <header className="border-b border-gray-200 bg-white">
-      <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-        {/* Mobile: menu button + title */}
-        <div className="flex items-center gap-3 sm:hidden">
+      {/* Three columns keep the logo centered whatever the side columns contain */}
+      <div className="max-w-5xl mx-auto px-4 py-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4">
+        {/* Mobile: menu button */}
+        <div className="flex items-center lg:hidden">
           <button
             type="button"
             onClick={() => setMenuOpen(true)}
@@ -52,11 +54,10 @@ export function NavBar({
               />
             </svg>
           </button>
-          <span className="font-semibold">Тренування</span>
         </div>
 
         {/* Desktop nav */}
-        <nav className="hidden sm:flex items-center gap-4 text-sm font-medium">
+        <nav className="hidden lg:flex items-center gap-4 text-sm font-medium">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
@@ -73,10 +74,14 @@ export function NavBar({
           ))}
         </nav>
 
+        <Link href="/" aria-label="Base Training — на головну" className="justify-self-center">
+          <Logo />
+        </Link>
+
         {/* Desktop user info */}
-        <div className="hidden sm:flex items-center gap-3 text-sm text-gray-600">
-          <span className="flex items-center gap-2">
-            Привіт, {user.name ?? user.email}
+        <div className="hidden lg:flex items-center justify-end gap-3 text-sm text-gray-600 min-w-0">
+          <span className="flex items-center gap-2 min-w-0">
+            <span className="truncate">Привіт, {user.name ?? user.email}</span>
             {avatar}
           </span>
           <form action={signOutAction}>
@@ -87,7 +92,7 @@ export function NavBar({
         </div>
 
         {/* Mobile: notifications shortcut on the right */}
-        <Link href="/notifications" aria-label="Нотифікації" className="relative sm:hidden p-1">
+        <Link href="/notifications" aria-label="Нотифікації" className="relative lg:hidden p-1 justify-self-end">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path
               d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"
@@ -107,7 +112,7 @@ export function NavBar({
 
       {/* Mobile drawer */}
       {menuOpen && (
-        <div className="fixed inset-0 z-50 sm:hidden">
+        <div className="fixed inset-0 z-50 lg:hidden">
           <div
             className="absolute inset-0 bg-black/40"
             onClick={() => setMenuOpen(false)}

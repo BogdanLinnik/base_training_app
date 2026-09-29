@@ -1,5 +1,6 @@
 import { auth, signIn, testLoginEnabled } from "@/auth";
 import { redirect } from "next/navigation";
+import { Logo } from "@/components/Logo";
 import { SubmitButton } from "@/components/SubmitButton";
 
 export default async function LoginPage() {
@@ -10,7 +11,10 @@ export default async function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-1">
-          <h1 className="text-2xl font-semibold">Тренування</h1>
+          <h1 className="flex justify-center pb-2">
+            <Logo size="lg" />
+            <span className="sr-only">Base Training App</span>
+          </h1>
           <p className="text-gray-500 text-sm">Увійдіть, щоб продовжити</p>
         </div>
 

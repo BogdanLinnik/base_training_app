@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Тренування",
+  title: "Base Training",
   description: "Застосунок для планування та відстеження тренувань",
 };
 
