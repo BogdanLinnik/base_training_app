@@ -19,7 +19,7 @@ import {
 } from "@/lib/progress";
 import { StatusBadge, TagBadge } from "@/components/StatusBadge";
 import { ProgressBadge } from "@/components/ProgressBadge";
-import { ATTRIBUTE_LABELS, type AttributeType } from "@/lib/exercises";
+import type { AttributeType } from "@/lib/exercises";
 import {
   addComment,
   addViewer,
@@ -31,6 +31,7 @@ import {
 } from "@/app/actions/trainings";
 import Link from "next/link";
 import { SubmitButton } from "@/components/SubmitButton";
+import { ExerciseRoundRow } from "@/components/ExerciseRoundRow";
 
 export default async function TrainingDetailPage({
   params,
@@ -375,9 +376,14 @@ function SidedRoundRows({
   fieldPrefix: string;
   getValue: (side: Side | null, attr: "weight" | "time" | "reps") => string | number;
 }) {
+  const valuesFor = (side: Side | null) => ({
+    weight: getValue(side, "weight"),
+    time: getValue(side, "time"),
+    reps: getValue(side, "reps"),
+  });
   if (!bilateral) {
     return (
-      <ExerciseRoundRow {...rest} fieldPrefix={fieldPrefix} getValue={(attr) => getValue(null, attr)} />
+      <ExerciseRoundRow {...rest} fieldPrefix={fieldPrefix} values={valuesFor(null)} />
     );
   }
   return (
@@ -388,57 +394,10 @@ function SidedRoundRows({
           <ExerciseRoundRow
             {...rest}
             fieldPrefix={`${fieldPrefix}__${side.toLowerCase()}`}
-            getValue={(attr) => getValue(side, attr)}
+            values={valuesFor(side)}
           />
         </div>
       ))}
-    </div>
-  );
-}
-
-function ExerciseRoundRow({
-  attrs,
-  planned,
-  editable,
-  readonlyValues,
-  fieldPrefix,
-  getValue,
-}: {
-  attrs: AttributeType[];
-  planned: { weight: number | null; time: number | null; reps: number | null };
-  editable: boolean;
-  readonlyValues: boolean;
-  fieldPrefix: string;
-  getValue: (attr: "weight" | "time" | "reps") => string | number;
-}) {
-  const attrKeyMap = { WEIGHT: "weight", TIME: "time", REPS: "reps" } as const;
-
-  return (
-    <div className="flex flex-wrap gap-4">
-      {attrs.map((attr) => {
-        const key = attrKeyMap[attr];
-        const plannedValue = planned[key];
-        if (plannedValue == null) return null;
-        return (
-          <div key={attr} className="text-sm">
-            <div className="text-xs text-gray-500 mb-1">
-              {ATTRIBUTE_LABELS[attr]} (план: {plannedValue})
-            </div>
-            {editable ? (
-              <input
-                type="number"
-                step="any"
-                min={0}
-                name={`${fieldPrefix}__${key}`}
-                defaultValue={getValue(key)}
-                className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm"
-              />
-            ) : (
-              <div className="w-24">{readonlyValues ? getValue(key) || "—" : "—"}</div>
-            )}
-          </div>
-        );
-      })}
     </div>
   );
 }
